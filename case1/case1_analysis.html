@@ -2753,6 +2753,7 @@ white-space: normal;
 </div>
 <section id="analyzing-medical-students-scores" class="level1" data-number="1">
 <h1 data-number="1"><span class="header-section-number">1</span> Analyzing medical students scores</h1>
+<p>Background given in the case desciprtion: “The course lasts twelve weeks. Throughout the course, students are assessed in multiple ways, including weekly quizzes, slide exams, and essays. They also take an end of course exam that includes essay, short answer, and multiple-choice components. The final data has the average scores for those assessments. Students are required to take laboratory practical (gross anatomy, histology, pathology and neuroanatomy) exams which are averaged into the final grade. Students also take a National Board of Medical Examiners (NBME) standardized exam in each course. Theoretically, if they do well on these exams, they should do well in the course overall. All of the assessments have been calculated on a 100- point scale.”</p>
 <section id="questions" class="level2" data-number="1.1">
 <h2 data-number="1.1" class="anchored" data-anchor-id="questions"><span class="header-section-number">1.1</span> Questions</h2>
 <ul>
@@ -2766,13 +2767,13 @@ white-space: normal;
 <div class="cell">
 <details>
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">label</span>(dat<span class="sc">$</span>quiz)      <span class="ot">&lt;-</span> <span class="st">&quot;Quiz score (mean)&quot;</span></span>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">label</span>(dat<span class="sc">$</span>quiz)      <span class="ot">&lt;-</span> <span class="st">&quot;Quiz score (mean weekly performance)&quot;</span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">label</span>(dat<span class="sc">$</span>nbme)      <span class="ot">&lt;-</span> <span class="st">&quot;National Board of Medical Examiners score&quot;</span></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">label</span>(dat<span class="sc">$</span>ga)        <span class="ot">&lt;-</span> <span class="st">&quot;GA&quot;</span></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">label</span>(dat<span class="sc">$</span>slide)      <span class="ot">&lt;-</span> <span class="st">&quot;Quiz score (mean)&quot;</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">label</span>(dat<span class="sc">$</span>part.c)      <span class="ot">&lt;-</span> <span class="st">&quot;Quiz score (mean)&quot;</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">label</span>(dat<span class="sc">$</span>essay)      <span class="ot">&lt;-</span> <span class="st">&quot;Quiz score (mean)&quot;</span></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">label</span>(dat<span class="sc">$</span>eob.exam)      <span class="ot">&lt;-</span> <span class="st">&quot;Quiz score (mean)&quot;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">label</span>(dat<span class="sc">$</span>slide)      <span class="ot">&lt;-</span> <span class="st">&quot;Slide exams score (mean)&quot;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">label</span>(dat<span class="sc">$</span>part.c)      <span class="ot">&lt;-</span> <span class="st">&quot;Part C score&quot;</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">label</span>(dat<span class="sc">$</span>essay)      <span class="ot">&lt;-</span> <span class="st">&quot;Essay score (mean)&quot;</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">label</span>(dat<span class="sc">$</span>eob.exam)      <span class="ot">&lt;-</span> <span class="st">&quot;EOB exam&quot;</span></span>
 <span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">label</span>(dat<span class="sc">$</span>final)      <span class="ot">&lt;-</span> <span class="st">&quot;Final score&quot;</span></span>
 <span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="fu">table1</span>(<span class="sc">~</span>quiz <span class="sc">+</span> nbme <span class="sc">+</span> ga <span class="sc">+</span> slide <span class="sc">+</span> part.c <span class="sc">+</span> essay<span class="sc">+</span> eob.exam <span class="sc">+</span> final , <span class="at">data=</span>dat, <span class="at">topclass=</span><span class="st">&quot;Rtable1-zebra&quot;</span>,)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
@@ -2788,7 +2789,7 @@ white-space: normal;
 </thead>
 <tbody>
 <tr>
-<td class="rowlabel firstrow">Quiz score (mean)</td>
+<td class="rowlabel firstrow">Quiz score (mean weekly performance)</td>
 <td class="firstrow"></td>
 </tr>
 <tr>
@@ -2824,7 +2825,7 @@ white-space: normal;
 <td class="lastrow">83.9 [49.5, 100]</td>
 </tr>
 <tr>
-<td class="rowlabel firstrow">Quiz score (mean)</td>
+<td class="rowlabel firstrow">Slide exams score (mean)</td>
 <td class="firstrow"></td>
 </tr>
 <tr>
@@ -2836,7 +2837,7 @@ white-space: normal;
 <td class="lastrow">83.9 [53.1, 100]</td>
 </tr>
 <tr>
-<td class="rowlabel firstrow">Quiz score (mean)</td>
+<td class="rowlabel firstrow">Part C score</td>
 <td class="firstrow"></td>
 </tr>
 <tr>
@@ -2848,7 +2849,7 @@ white-space: normal;
 <td class="lastrow">81.6 [59.6, 100]</td>
 </tr>
 <tr>
-<td class="rowlabel firstrow">Quiz score (mean)</td>
+<td class="rowlabel firstrow">Essay score (mean)</td>
 <td class="firstrow"></td>
 </tr>
 <tr>
@@ -2860,7 +2861,7 @@ white-space: normal;
 <td class="lastrow">87.3 [71.3, 95.8]</td>
 </tr>
 <tr>
-<td class="rowlabel firstrow">Quiz score (mean)</td>
+<td class="rowlabel firstrow">EOB exam</td>
 <td class="firstrow"></td>
 </tr>
 <tr>
@@ -2895,6 +2896,11 @@ white-space: normal;
 <pre><code>[1] 92</code></pre>
 </div>
 </div>
+<p>Questions for Mario:</p>
+<ul>
+<li><p>What does GA stand for in the data? What does part.c stand for in the data? What does eob refer to on the exam? Where is the score for the laboratory practical?</p></li>
+<li><p>Can we assume the slide exam score is a mean?</p></li>
+</ul>
 <!-- -->
 
 </section>
@@ -3140,27 +3146,36 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb4-52"><a href="#cb4-52" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb4-53"><a href="#cb4-53" aria-hidden="true" tabindex="-1"></a><span class="fu"># Analyzing medical students scores</span></span>
 <span id="cb4-54"><a href="#cb4-54" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-55"><a href="#cb4-55" aria-hidden="true" tabindex="-1"></a><span class="fu">## Questions</span></span>
-<span id="cb4-56"><a href="#cb4-56" aria-hidden="true" tabindex="-1"></a><span class="ss"> - </span>How should we define not pass/ marginal pass/ pass thresholds and criteria?</span>
-<span id="cb4-57"><a href="#cb4-57" aria-hidden="true" tabindex="-1"></a><span class="ss"> - </span>How do these thresholds compare to final exam scores</span>
-<span id="cb4-58"><a href="#cb4-58" aria-hidden="true" tabindex="-1"></a> </span>
-<span id="cb4-59"><a href="#cb4-59" aria-hidden="true" tabindex="-1"></a><span class="fu">## Data </span></span>
-<span id="cb4-60"><a href="#cb4-60" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-61"><a href="#cb4-61" aria-hidden="true" tabindex="-1"></a>There are <span class="in">`r length(unique(dat$id))`</span> students. </span>
-<span id="cb4-62"><a href="#cb4-62" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-65"><a href="#cb4-65" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb4-66"><a href="#cb4-66" aria-hidden="true" tabindex="-1"></a><span class="fu">label</span>(dat<span class="sc">$</span>quiz)      <span class="ot">&lt;-</span> <span class="st">&quot;Quiz score (mean)&quot;</span></span>
-<span id="cb4-67"><a href="#cb4-67" aria-hidden="true" tabindex="-1"></a><span class="fu">label</span>(dat<span class="sc">$</span>nbme)      <span class="ot">&lt;-</span> <span class="st">&quot;National Board of Medical Examiners score&quot;</span></span>
-<span id="cb4-68"><a href="#cb4-68" aria-hidden="true" tabindex="-1"></a><span class="fu">label</span>(dat<span class="sc">$</span>ga)        <span class="ot">&lt;-</span> <span class="st">&quot;GA&quot;</span></span>
-<span id="cb4-69"><a href="#cb4-69" aria-hidden="true" tabindex="-1"></a><span class="fu">label</span>(dat<span class="sc">$</span>slide)      <span class="ot">&lt;-</span> <span class="st">&quot;Quiz score (mean)&quot;</span></span>
-<span id="cb4-70"><a href="#cb4-70" aria-hidden="true" tabindex="-1"></a><span class="fu">label</span>(dat<span class="sc">$</span>part.c)      <span class="ot">&lt;-</span> <span class="st">&quot;Quiz score (mean)&quot;</span></span>
-<span id="cb4-71"><a href="#cb4-71" aria-hidden="true" tabindex="-1"></a><span class="fu">label</span>(dat<span class="sc">$</span>essay)      <span class="ot">&lt;-</span> <span class="st">&quot;Quiz score (mean)&quot;</span></span>
-<span id="cb4-72"><a href="#cb4-72" aria-hidden="true" tabindex="-1"></a><span class="fu">label</span>(dat<span class="sc">$</span>eob.exam)      <span class="ot">&lt;-</span> <span class="st">&quot;Quiz score (mean)&quot;</span></span>
-<span id="cb4-73"><a href="#cb4-73" aria-hidden="true" tabindex="-1"></a><span class="fu">label</span>(dat<span class="sc">$</span>final)      <span class="ot">&lt;-</span> <span class="st">&quot;Final score&quot;</span></span>
-<span id="cb4-74"><a href="#cb4-74" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-75"><a href="#cb4-75" aria-hidden="true" tabindex="-1"></a><span class="fu">table1</span>(<span class="sc">~</span>quiz <span class="sc">+</span> nbme <span class="sc">+</span> ga <span class="sc">+</span> slide <span class="sc">+</span> part.c <span class="sc">+</span> essay<span class="sc">+</span> eob.exam <span class="sc">+</span> final , <span class="at">data=</span>dat, <span class="at">topclass=</span><span class="st">&quot;Rtable1-zebra&quot;</span>,)</span>
-<span id="cb4-76"><a href="#cb4-76" aria-hidden="true" tabindex="-1"></a><span class="fu">length</span>(<span class="fu">unique</span>(dat<span class="sc">$</span>id))</span>
-<span id="cb4-77"><a href="#cb4-77" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb4-55"><a href="#cb4-55" aria-hidden="true" tabindex="-1"></a>Background given in the case desciprtion: &quot;The course lasts twelve weeks. Throughout the course, students are assessed in multiple ways, including weekly quizzes, slide exams, and essays. They also take an end of course exam that includes essay, short answer, and multiple-choice components. The final data has the average scores for those assessments. Students are required to take laboratory practical (gross anatomy, histology, pathology and neuroanatomy) exams which are averaged into the final grade. Students also take a National Board of Medical Examiners (NBME) standardized exam in each course. Theoretically, if they do well on these exams, they should do well in the course overall. All of the assessments have been calculated on a 100- point scale.&quot;</span>
+<span id="cb4-56"><a href="#cb4-56" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-57"><a href="#cb4-57" aria-hidden="true" tabindex="-1"></a><span class="fu">## Questions</span></span>
+<span id="cb4-58"><a href="#cb4-58" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-59"><a href="#cb4-59" aria-hidden="true" tabindex="-1"></a><span class="ss">-   </span>How should we define not pass/ marginal pass/ pass thresholds and criteria?</span>
+<span id="cb4-60"><a href="#cb4-60" aria-hidden="true" tabindex="-1"></a><span class="ss">-   </span>How do these thresholds compare to final exam scores</span>
+<span id="cb4-61"><a href="#cb4-61" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-62"><a href="#cb4-62" aria-hidden="true" tabindex="-1"></a><span class="fu">## Data</span></span>
+<span id="cb4-63"><a href="#cb4-63" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-64"><a href="#cb4-64" aria-hidden="true" tabindex="-1"></a>There are <span class="in">`r length(unique(dat$id))`</span> students.</span>
+<span id="cb4-65"><a href="#cb4-65" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-68"><a href="#cb4-68" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb4-69"><a href="#cb4-69" aria-hidden="true" tabindex="-1"></a><span class="fu">label</span>(dat<span class="sc">$</span>quiz)      <span class="ot">&lt;-</span> <span class="st">&quot;Quiz score (mean weekly performance)&quot;</span></span>
+<span id="cb4-70"><a href="#cb4-70" aria-hidden="true" tabindex="-1"></a><span class="fu">label</span>(dat<span class="sc">$</span>nbme)      <span class="ot">&lt;-</span> <span class="st">&quot;National Board of Medical Examiners score&quot;</span></span>
+<span id="cb4-71"><a href="#cb4-71" aria-hidden="true" tabindex="-1"></a><span class="fu">label</span>(dat<span class="sc">$</span>ga)        <span class="ot">&lt;-</span> <span class="st">&quot;GA&quot;</span></span>
+<span id="cb4-72"><a href="#cb4-72" aria-hidden="true" tabindex="-1"></a><span class="fu">label</span>(dat<span class="sc">$</span>slide)      <span class="ot">&lt;-</span> <span class="st">&quot;Slide exams score (mean)&quot;</span></span>
+<span id="cb4-73"><a href="#cb4-73" aria-hidden="true" tabindex="-1"></a><span class="fu">label</span>(dat<span class="sc">$</span>part.c)      <span class="ot">&lt;-</span> <span class="st">&quot;Part C score&quot;</span></span>
+<span id="cb4-74"><a href="#cb4-74" aria-hidden="true" tabindex="-1"></a><span class="fu">label</span>(dat<span class="sc">$</span>essay)      <span class="ot">&lt;-</span> <span class="st">&quot;Essay score (mean)&quot;</span></span>
+<span id="cb4-75"><a href="#cb4-75" aria-hidden="true" tabindex="-1"></a><span class="fu">label</span>(dat<span class="sc">$</span>eob.exam)      <span class="ot">&lt;-</span> <span class="st">&quot;EOB exam&quot;</span></span>
+<span id="cb4-76"><a href="#cb4-76" aria-hidden="true" tabindex="-1"></a><span class="fu">label</span>(dat<span class="sc">$</span>final)      <span class="ot">&lt;-</span> <span class="st">&quot;Final score&quot;</span></span>
+<span id="cb4-77"><a href="#cb4-77" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-78"><a href="#cb4-78" aria-hidden="true" tabindex="-1"></a><span class="fu">table1</span>(<span class="sc">~</span>quiz <span class="sc">+</span> nbme <span class="sc">+</span> ga <span class="sc">+</span> slide <span class="sc">+</span> part.c <span class="sc">+</span> essay<span class="sc">+</span> eob.exam <span class="sc">+</span> final , <span class="at">data=</span>dat, <span class="at">topclass=</span><span class="st">&quot;Rtable1-zebra&quot;</span>,)</span>
+<span id="cb4-79"><a href="#cb4-79" aria-hidden="true" tabindex="-1"></a><span class="fu">length</span>(<span class="fu">unique</span>(dat<span class="sc">$</span>id))</span>
+<span id="cb4-80"><a href="#cb4-80" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb4-81"><a href="#cb4-81" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-82"><a href="#cb4-82" aria-hidden="true" tabindex="-1"></a>Questions for Mario:</span>
+<span id="cb4-83"><a href="#cb4-83" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-84"><a href="#cb4-84" aria-hidden="true" tabindex="-1"></a><span class="ss">-   </span>What does GA stand for in the data? What does part.c stand for in the data? What does eob refer to on the exam? Where is the score for the laboratory practical?</span>
+<span id="cb4-85"><a href="#cb4-85" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-86"><a href="#cb4-86" aria-hidden="true" tabindex="-1"></a><span class="ss">-   </span>Can we assume the slide exam score is a mean?</span>
 </code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div></div></div></div></div>
 </div> <!-- /content -->
