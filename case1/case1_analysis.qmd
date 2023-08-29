@@ -52,16 +52,34 @@ dat <- readxl::read_xlsx("~/BIOS7351_Collab/github/BIOS_Collaboration/case1/Case
 
 # Analyzing medical students scores
 
-## Questions
- - How should we define not pass/ marginal pass/ pass thresholds and criteria?
- - How do these thresholds compare to final exam scores
- 
-## Data 
+Background given in the case desciprtion: "The course lasts twelve weeks. Throughout the course, students are assessed in multiple ways, including weekly quizzes, slide exams, and essays. They also take an end of course exam that includes essay, short answer, and multiple-choice components. The final data has the average scores for those assessments. Students are required to take laboratory practical (gross anatomy, histology, pathology and neuroanatomy) exams which are averaged into the final grade. Students also take a National Board of Medical Examiners (NBME) standardized exam in each course. Theoretically, if they do well on these exams, they should do well in the course overall. All of the assessments have been calculated on a 100- point scale."
 
-There are `r length(unique(dat$id))` students. 
+## Questions
+
+-   How should we define not pass/ marginal pass/ pass thresholds and criteria?
+-   How do these thresholds compare to final exam scores
+
+## Data
+
+There are `r length(unique(dat$id))` students.
 
 ```{r}
-summary(dat)
+
+label(dat$quiz)      <- "Quiz score (mean weekly performance)"
+label(dat$nbme)      <- "National Board of Medical Examiners score"
+label(dat$ga)        <- "GA"
+label(dat$slide)      <- "Slide exams score (mean)"
+label(dat$part.c)      <- "Quiz score (mean)"
+label(dat$essay)      <- "Essay score (mean)"
+label(dat$eob.exam)      <- "EOB exam"
+label(dat$final)      <- "Final score"
+
+table1(~quiz + nbme + ga + slide + part.c + essay+ eob.exam + final , data=dat, topclass="Rtable1-zebra",)
 length(unique(dat$id))
 ```
 
+Questions for Mario:
+
+-   What does GA stand for in the data? What does part.c stand for in the data? What does eob refer to on the exam? Where is the score for the laboratory practical?
+
+-   Can we assume the slide exam score is a mean?
