@@ -66,30 +66,30 @@ Background given in the case description: "The course lasts twelve weeks. Throug
 
 ## Data
 
-There are `r length(unique(dt$id))` students. `r sum(dt$final <= 70)` students scored below 70 on the final exam.
+There are `r length(unique(dt$id))` students. `r sum(dt$final <= 70)` students scored below 70 on the final exam which is grounds for an immediate failing threshold. `r sum(dt$final <= 80) - sum(dt$final <=70)` students scored between a 70 & 80 on the final which could be considered students for further scrutiny.
 
 ```{r}
 
 label(dt$quiz)      <- "Quiz score (mean weekly performance)"
 label(dt$nbme)      <- "National Board of Medical Examiners score"
-label(dt$ga)        <- "GA"
+label(dt$ga)        <- "Gross anatomy (mean score)"
 label(dt$slide)      <- "Slide exams score (mean)"
 label(dt$part.c)      <- "Part C score"
 label(dt$essay)      <- "Essay score (mean)"
-label(dt$eob.exam)      <- "EOB exam"
+label(dt$eob.exam)      <- "End of Block (course term) exam"
 label(dt$final)      <- "Final score"
 
 table1(~quiz + nbme + ga + slide + part.c + essay+ eob.exam + final , data=dt, topclass="Rtable1-zebra",)
-length(unique(dt$id))
 ```
 
-Questions for Mario:
+Note: Part C score is "like a catch-all exam if the knowledge can't be obtained through their lab and essay assessments."
 
--   What does GA stand for in the data? What does part.c stand for in the data? What does eob refer to on the exam? Where is the score for the laboratory practical?
+-   not included in our data (but included in the student evaluation) is the score for the laboratory practical which "has multiple assessment scores which are captured in the data such as the histology, pathology, etc. - which are not specifically named like that."
 
--   Can we assume the slide exam score is a mean?
+    -   We will disregard for our purposes
 
-### Scores based on startifying by passing the final exam at 70% threshold
+### Scores based on stratifying by passing the final exam at 70% threshold
+
 ```{r}
 dt = dt %>% 
   mutate(quiz = 100*quiz)
@@ -104,21 +104,23 @@ tableby(pass~.,dt %>%
   summary() %>% 
   knitr::kable()
 ```
-Below is a pairs plot where students are divided into groups depending on whether they passed or if they scored below 80% which we called "almost fail". These students deserve more scrutiny - how did they perform on other assessments?
+
+Below is a pairs plot where students are divided into groups depending on whether they passed or if they scored below 80% which we called "almost fail". Like mentined above, these students deserve more scrutiny - how did they perform on other assessments?
+
 ```{r}
 #| fig-width: 10
 #| fig-height: 10
 set.seed(123123)
 pc = prcomp(dt %>% select(-id,-final) %>% mutate_all(scale))
 
+#create pairs plot
 ggpairs(dt %>% select(-id),
         aes(color=ifelse(final>80,"pass","(almost)fail")),
         progress = F)
 ```
 
-
-
 ```{r}
+#k means clusters
 cl = kmeans(dt %>% select(-id) %>% mutate_all(scale),
             centers = 4)$cluster
 dt %>% left_join(tibble(id = dt$id,cluster = as.factor(cl))) %>% 
@@ -131,6 +133,22 @@ autoplot(pc,color = as.factor(cl))
 ```
 
 ## Can I create a better metric?
+
+What if we take a weighted average to calculate the overall score where 0.4 comes from the NBME exam and 0.6 is a combination of :
+
+-   quiz scores
+
+-   gross anatomy
+
+-   slide quiz scores
+
+-   Part C
+
+-   essay scores
+
+-   the end of block exam
+
+and set the students in the lowest 5% quantile to fail.
 
 ```{r}
 #| fig-width: 10
@@ -146,6 +164,7 @@ dt %>% select(-id) %>%
             "pass","fail")),
           progress = F)
 
+#graph pca
 dt  %>% 
   mutate(overall = overall,
          pass = overall>quantile(overall,0.05)) %>% 
@@ -157,21 +176,21 @@ ggplot(aes(y=PC2,x=PC1,color=pass))+
 ```{r}
 #| fig-width: 10
 #| fig-height: 10
-
-overall = scale(pc$x)[,1:2] %*% c(-0.8,0.2) 
-
-dt %>% select(-id) %>% 
-  mutate(overall = as.numeric(overall)) %>% 
-  ggpairs(.,
-          aes(color = ifelse(
-            overall> quantile(overall,0.05),
-            "pass","fail")),
-          progress = F)
-
-dt  %>% 
-  mutate(overall = overall,
-         pass = overall>quantile(overall,0.05)) %>% 
-  cbind(pc$x) %>% 
-ggplot(aes(x=PC1,y=PC2,color=pass))+
-  geom_jitter()
+# 
+# overall = scale(pc$x)[,1:2] %*% c(-0.8,0.2) 
+# 
+# dt %>% select(-id) %>% 
+#   mutate(overall = as.numeric(overall)) %>% 
+#   ggpairs(.,
+#           aes(color = ifelse(
+#             overall> quantile(overall,0.05),
+#             "pass","fail")),
+#           progress = F)
+# 
+# dt  %>% 
+#   mutate(overall = overall,
+#          pass = overall>quantile(overall,0.05)) %>% 
+#   cbind(pc$x) %>% 
+# ggplot(aes(x=PC1,y=PC2,color=pass))+
+#   geom_jitter()
 ```
