@@ -1,0 +1,67 @@
+---
+title: "Case 1 Learning Objective 4"
+author: "Lisa Levoir and Jeffrey Zhuohui Liang"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+format: 
+  html:
+        theme: yeti
+        code-fold: true
+        code-tools: true
+        html-math-method: katex
+        toc: true
+        toc-depth: 3
+        fig-width: 13
+        fig-height: 10
+        toc-title: "Contents"
+        number-sections: true
+        self-contained: true
+        self-contained-math: true
+        smooth-scroll: true
+        fontsize: 0.8em
+        title-block-banner: true
+        citation-location: margin
+editor: visual
+---
+
+```{r setup}
+#| echo: false
+#| message: false
+#| warning: false
+
+#load libraries (more than I need but nice ot have)
+library(tidyverse)
+library(knitr)
+library(table1) #Create HTML Tables of Descriptive Statistics https://cran.r-project.org/web/packages/table1/vignettes/table1-examples.html
+#library(OMTM1) #https://github.com/schildjs/OMTM1/
+library(Hmisc)
+library(viridis) #colors
+library(rms) # Regression Modeling Strategies by Frank https://cran.r-project.org/web/packages/rms/index.html
+library(modelsummary) #Summary Tables and Plots for Statistical Models and Data: Beautiful, Customizable, and Publication-Ready https://cran.r-project.org/web/packages/modelsummary/index.html
+library(scales) # The scales packages provides the internal scaling infrastructure used by ggplot2, and gives you tools to override the default breaks, labels, transformations and palettes. https://scales.r-lib.org
+library(plotly)
+library(dplyr)
+library(tidyr)
+library(cowplot) #allows me to use plotgrid
+library(gridExtra) #adding tables to plots
+
+
+setwd("/Users/lisalevoir/BIOS7351_Collab/github/BIOS_Collaboration") #this line used to work until I moved this qmd file to my github folder (I need to run this in the console when I switch projects)
+knitr::opts_knit$set(root.dir = "/Users/lisalevoir/BIOS7351_Collab/github/BIOS_Collaboration/case1") #this is a global option for knitting
+dat <- readxl::read_xlsx("~/BIOS7351_Collab/github/BIOS_Collaboration/case1/Case1.xlsx")
+```
+
+# Analyzing medical students scores
+
+## Questions
+ - How should we define not pass/ marginal pass/ pass thresholds and criteria?
+ - How do these thresholds compare to final exam scores
+ 
+## Data 
+
+There are `r length(unique(dat$id))` students. 
+
+```{r}
+summary(dat)
+length(unique(dat$id))
+```
+
