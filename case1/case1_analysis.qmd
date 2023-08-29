@@ -27,6 +27,7 @@ editor: visual
 #| echo: false
 #| message: false
 #| warning: false
+#| include: false
 
 #load libraries (more than I need but nice ot have)
 library(tidyverse)
@@ -35,47 +36,51 @@ library(table1) #Create HTML Tables of Descriptive Statistics https://cran.r-pro
 #library(OMTM1) #https://github.com/schildjs/OMTM1/
 library(Hmisc)
 library(viridis) #colors
-library(rms) # Regression Modeling Strategies by Frank https://cran.r-project.org/web/packages/rms/index.html
-library(modelsummary) #Summary Tables and Plots for Statistical Models and Data: Beautiful, Customizable, and Publication-Ready https://cran.r-project.org/web/packages/modelsummary/index.html
-library(scales) # The scales packages provides the internal scaling infrastructure used by ggplot2, and gives you tools to override the default breaks, labels, transformations and palettes. https://scales.r-lib.org
+library(tidyverse)
+library(readxl)
+library(corrplot)
+library(arsenal)
+library(GGally)
+library(ggthemes)
+library(ggfortify)
 library(plotly)
 library(dplyr)
 library(tidyr)
 library(cowplot) #allows me to use plotgrid
-library(gridExtra) #adding tables to plots
-
+theme_set(ggthemes::theme_calc())
+scale_color_discrete = scale_color_calc()
 
 setwd("/Users/lisalevoir/BIOS7351_Collab/github/BIOS_Collaboration") #this line used to work until I moved this qmd file to my github folder (I need to run this in the console when I switch projects)
 knitr::opts_knit$set(root.dir = "/Users/lisalevoir/BIOS7351_Collab/github/BIOS_Collaboration/case1") #this is a global option for knitting
-dat <- readxl::read_xlsx("~/BIOS7351_Collab/github/BIOS_Collaboration/case1/Case1.xlsx")
+dt <- readxl::read_xlsx("~/BIOS7351_Collab/github/BIOS_Collaboration/case1/Case1.xlsx")
 ```
 
 # Analyzing medical students scores
 
-Background given in the case desciprtion: "The course lasts twelve weeks. Throughout the course, students are assessed in multiple ways, including weekly quizzes, slide exams, and essays. They also take an end of course exam that includes essay, short answer, and multiple-choice components. The final data has the average scores for those assessments. Students are required to take laboratory practical (gross anatomy, histology, pathology and neuroanatomy) exams which are averaged into the final grade. Students also take a National Board of Medical Examiners (NBME) standardized exam in each course. Theoretically, if they do well on these exams, they should do well in the course overall. All of the assessments have been calculated on a 100- point scale."
+Background given in the case description: "The course lasts twelve weeks. Throughout the course, students are assessed in multiple ways, including weekly quizzes, slide exams, and essays. They also take an end of course exam that includes essay, short answer, and multiple-choice components. The final data has the average scores for those assessments. Students are required to take laboratory practical (gross anatomy, histology, pathology and neuroanatomy) exams which are averaged into the final grade. Students also take a National Board of Medical Examiners (NBME) standardized exam in each course. Theoretically, if they do well on these exams, they should do well in the course overall. All of the assessments have been calculated on a 100- point scale."
 
-## Questions
+## Questions from Learning Objective 4
 
 -   How should we define not pass/ marginal pass/ pass thresholds and criteria?
--   How do these thresholds compare to final exam scores
+-   How do these thresholds compare to final exam scores?
 
 ## Data
 
-There are `r length(unique(dat$id))` students.
+There are `r length(unique(dt$id))` students. `r sum(dt$final <= 70)` students scored below 70 on the final exam.
 
 ```{r}
 
-label(dat$quiz)      <- "Quiz score (mean weekly performance)"
-label(dat$nbme)      <- "National Board of Medical Examiners score"
-label(dat$ga)        <- "GA"
-label(dat$slide)      <- "Slide exams score (mean)"
-label(dat$part.c)      <- "Part C score"
-label(dat$essay)      <- "Essay score (mean)"
-label(dat$eob.exam)      <- "EOB exam"
-label(dat$final)      <- "Final score"
+label(dt$quiz)      <- "Quiz score (mean weekly performance)"
+label(dt$nbme)      <- "National Board of Medical Examiners score"
+label(dt$ga)        <- "GA"
+label(dt$slide)      <- "Slide exams score (mean)"
+label(dt$part.c)      <- "Part C score"
+label(dt$essay)      <- "Essay score (mean)"
+label(dt$eob.exam)      <- "EOB exam"
+label(dt$final)      <- "Final score"
 
-table1(~quiz + nbme + ga + slide + part.c + essay+ eob.exam + final , data=dat, topclass="Rtable1-zebra",)
-length(unique(dat$id))
+table1(~quiz + nbme + ga + slide + part.c + essay+ eob.exam + final , data=dt, topclass="Rtable1-zebra",)
+length(unique(dt$id))
 ```
 
 Questions for Mario:
@@ -83,3 +88,90 @@ Questions for Mario:
 -   What does GA stand for in the data? What does part.c stand for in the data? What does eob refer to on the exam? Where is the score for the laboratory practical?
 
 -   Can we assume the slide exam score is a mean?
+
+### Scores based on startifying by passing the final exam at 70% threshold
+```{r}
+dt = dt %>% 
+  mutate(quiz = 100*quiz)
+
+tableby(pass~.,dt %>% 
+          select(-id) %>% 
+          mutate(pass = final>70),
+        control = 
+          tableby.control(
+            numeric.stats = c("meansd","median","range"),
+          )) %>% 
+  summary() %>% 
+  knitr::kable()
+```
+Below is a pairs plot where students are divided into groups depending on whether they passed or if they scored below 80% which we called "almost fail". These students deserve more scrutiny - how did they perform on other assessments?
+```{r}
+#| fig-width: 10
+#| fig-height: 10
+set.seed(123123)
+pc = prcomp(dt %>% select(-id,-final) %>% mutate_all(scale))
+
+ggpairs(dt %>% select(-id),
+        aes(color=ifelse(final>80,"pass","(almost)fail")),
+        progress = F)
+```
+
+
+
+```{r}
+cl = kmeans(dt %>% select(-id) %>% mutate_all(scale),
+            centers = 4)$cluster
+dt %>% left_join(tibble(id = dt$id,cluster = as.factor(cl))) %>% 
+  cbind(pc$x) %>% 
+  ggplot(aes(x=PC1,y=final,color=cluster)) +
+  scale_color_calc()+
+  geom_jitter()
+
+autoplot(pc,color = as.factor(cl))
+```
+
+## Can I create a better metric?
+
+```{r}
+#| fig-width: 10
+#| fig-height: 10
+overall = 
+  0.6*rowMeans(dt %>% select(-id,-final,-nbme)) +
+  0.4*dt$nbme
+dt %>% select(-id) %>% 
+  mutate(overall = overall) %>% 
+  ggpairs(.,
+          aes(color = ifelse(
+            overall> quantile(overall,0.05),
+            "pass","fail")),
+          progress = F)
+
+dt  %>% 
+  mutate(overall = overall,
+         pass = overall>quantile(overall,0.05)) %>% 
+  cbind(pc$x) %>% 
+ggplot(aes(y=PC2,x=PC1,color=pass))+
+  geom_jitter()
+```
+
+```{r}
+#| fig-width: 10
+#| fig-height: 10
+
+overall = scale(pc$x)[,1:2] %*% c(-0.8,0.2) 
+
+dt %>% select(-id) %>% 
+  mutate(overall = as.numeric(overall)) %>% 
+  ggpairs(.,
+          aes(color = ifelse(
+            overall> quantile(overall,0.05),
+            "pass","fail")),
+          progress = F)
+
+dt  %>% 
+  mutate(overall = overall,
+         pass = overall>quantile(overall,0.05)) %>% 
+  cbind(pc$x) %>% 
+ggplot(aes(x=PC1,y=PC2,color=pass))+
+  geom_jitter()
+```
