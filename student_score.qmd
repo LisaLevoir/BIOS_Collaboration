@@ -1,0 +1,104 @@
+---
+title: "Student Score"
+format: html
+editor: visual
+---
+
+```{r}
+#| include: false
+library(tidyverse)
+library(readxl)
+library(corrplot)
+library(arsenal)
+library(GGally)
+library(ggthemes)
+library(ggfortify)
+theme_set(ggthemes::theme_calc())
+scale_color_discrete = scale_color_calc()
+dt = read_excel("~/Downloads/Case1.csv1.xlsx")
+```
+
+```{r}
+
+dt = dt %>% 
+  mutate(quiz = 100*quiz)
+
+tableby(pass~.,dt %>% 
+          select(-id) %>% 
+          mutate(pass = final>75),
+        control = 
+          tableby.control(
+            numeric.stats = c("meansd","median","range"),
+          )) %>% 
+  summary() %>% 
+  knitr::kable()
+
+set.seed(123123)
+pc = prcomp(dt %>% select(-id,-final) %>% mutate_all(scale))
+```
+
+```{r}
+#| fig-width: 10
+#| fig-height: 10
+ggpairs(dt %>% select(-id),
+        aes(color=ifelse(final>80,"pass","(almost)fail")),
+        progress = F)
+```
+
+```{r}
+cl = kmeans(dt %>% select(-id) %>% mutate_all(scale),
+            centers = 4)$cluster
+dt %>% left_join(tibble(id = dt$id,cluster = as.factor(cl))) %>% 
+  cbind(pc$x) %>% 
+  ggplot(aes(x=PC1,y=final,color=cluster)) +
+  scale_color_calc()+
+  geom_jitter()
+
+autoplot(pc,color = as.factor(cl))
+```
+## Can I create a better metric?
+
+```{r}
+#| fig-width: 10
+#| fig-height: 10
+overall = 
+  0.6*rowMeans(dt %>% select(-id,-final,-nbme)) +
+  0.4*dt$nbme
+dt %>% select(-id) %>% 
+  mutate(overall = overall) %>% 
+  ggpairs(.,
+          aes(color = ifelse(
+            overall> quantile(overall,0.05),
+            "pass","fail")),
+          progress = F)
+
+dt  %>% 
+  mutate(overall = overall,
+         pass = overall>quantile(overall,0.05)) %>% 
+  cbind(pc$x) %>% 
+ggplot(aes(y=PC2,x=PC1,color=pass))+
+  geom_jitter()
+```
+
+
+```{r}
+#| fig-width: 10
+#| fig-height: 10
+
+overall = scale(pc$x)[,1:2] %*% c(-0.8,0.2) 
+
+dt %>% select(-id) %>% 
+  mutate(overall = as.numeric(overall)) %>% 
+  ggpairs(.,
+          aes(color = ifelse(
+            overall> quantile(overall,0.05),
+            "pass","fail")),
+          progress = F)
+
+dt  %>% 
+  mutate(overall = overall,
+         pass = overall>quantile(overall,0.05)) %>% 
+  cbind(pc$x) %>% 
+ggplot(aes(x=PC1,y=PC2,color=pass))+
+  geom_jitter()
+```
