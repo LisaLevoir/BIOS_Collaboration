@@ -32,7 +32,7 @@ editor: visual
 #load libraries (more than I need but nice ot have)
 library(tidyverse)
 library(knitr)
-library(table1) #Create HTML Tables of Descriptive Statistics https://cran.r-project.org/web/packages/table1/vignettes/table1-examples.html
+#library(table1) #Create HTML Tables of Descriptive Statistics https://cran.r-project.org/web/packages/table1/vignettes/table1-examples.html
 #library(OMTM1) #https://github.com/schildjs/OMTM1/
 library(Hmisc)
 library(viridis) #colors
@@ -50,9 +50,9 @@ library(cowplot) #allows me to use plotgrid
 theme_set(ggthemes::theme_calc())
 scale_color_discrete = scale_color_calc()
 
-setwd("/Users/lisalevoir/BIOS7351_Collab/github/BIOS_Collaboration") #this line used to work until I moved this qmd file to my github folder (I need to run this in the console when I switch projects)
-knitr::opts_knit$set(root.dir = "/Users/lisalevoir/BIOS7351_Collab/github/BIOS_Collaboration/case1") #this is a global option for knitting
-dt <- readxl::read_xlsx("~/BIOS7351_Collab/github/BIOS_Collaboration/case1/Case1.xlsx")
+#setwd("/Users/lisalevoir/BIOS7351_Collab/github/BIOS_Collaboration") #this line used to work until I moved this qmd file to my github folder (I need to run this in the console when I switch projects)
+#knitr::opts_knit$set(root.dir = "/Users/lisalevoir/BIOS7351_Collab/github/BIOS_Collaboration/case1") #this is a global option for knitting
+dt <- readxl::read_xlsx("./Case1.xlsx")
 ```
 
 # Analyzing medical students scores
@@ -78,12 +78,10 @@ label(dt$essay)      <- "Essay score (mean)"
 label(dt$eob.exam)      <- "End of Block (course term) exam"
 label(dt$final)      <- "Final score"
 
-table1(~quiz + nbme + ga + slide + part.c + essay+ eob.exam + final , data=dt, topclass="Rtable1-zebra",)
+tableby(~quiz + nbme + ga + slide + part.c + essay+ eob.exam + final , data=dt, topclass="Rtable1-zebra",control = tableby.control(numeric.stats = c("meansd","median","range"))) %>% summary()%>% kable()
 ```
 
-
-
-Notes: 
+Notes:
 
 -   There is no missingness in the dataset.
 
@@ -121,11 +119,11 @@ pc = prcomp(dt %>% select(-id,-final) %>% mutate_all(scale))
 
 #create pairs plot
 ggpairs(dt %>% select(-id),
-        aes(color=ifelse(final>80,"pass","(almost)fail")),
+        aes(color=ifelse(final>80,"pass","(almost)fail\n")),
         progress = F) + labs(caption = "Stratified by final scores: (almost)fail is <=80 and pass is >80")
 ```
 
-There appears to be pretty distinct separation in the distribution in the performance of students who scored less than 80% on the final vs. students who exceeded that threshold. Looking at the rightmost column, there is strong correlation (>0.702) between scores on the final exam and other metrics. 
+There appears to be pretty distinct separation in the distribution in the performance of students who scored less than 80% on the final vs. students who exceeded that threshold. Looking at the rightmost column, there is strong correlation (\>0.702) between scores on the final exam and other metrics.
 
 It is likely wise to stick with precedent of 70% being a pass threshold, since the distributions of all other evaluations are even more disparate as shown by the density plots below:
 
@@ -145,6 +143,7 @@ plot_grid(plots[[1]], plots[[2]], plots[[3]], plots[[4]], plots[[5]], plots[[6]]
 ```
 
 However, there isn't as much separation for GA - perhaps one student did relatively better in Gross Anatomy, but their other scores during and outside of the course are much below their classmates.
+
 ```{r}
 labels <- c("student a", "student b", "class mean")
 summary <- rbind(dt[which(dt$final<70), 2:9], colMeans(dt[,2:9]))
@@ -153,8 +152,8 @@ summary2 %>% mutate(across(where(is.numeric), ~ round(., digits = 0))) %>%
   kable(.)
 ```
 
+If we stratify by who got a 90 on the final, for example, there is much more overlap for the distributions - so we aren't separating out who is not performing well enough overall with this stringent of a cutoff.
 
-If we stratify by who got a 90 on the final, for example, there is much more overlap for the distributions - so we aren't separating out who is not performing well enough overall with this stringent of a cutoff. 
 ```{r}
 plots <- list()
 
@@ -168,7 +167,9 @@ plot_grid(plots[[1]], plots[[2]], plots[[3]], plots[[4]], plots[[5]], plots[[6]]
 ```
 
 ### PCA
-We did further analysis with K means clustering with 4 groups in an effort to identify particular groups of students classified based on their scores as an additional way to justify a separation threshold for failing.
+
+We did further analysis with K means clustering with 4 groups(A,B,C,F) in an effort to identify particular groups of students classified based on their scores as an additional way to justify a separation threshold for failing. But as we can see, we failed to identify any useful subgroup in the data. But we can see that there are potential outliers in the student in the lower performance, we just need an evaluation method that help us capture these students with low performance
+
 ```{r}
 #| warning: false
 #k means clusters
@@ -185,7 +186,7 @@ autoplot(pc,color = as.factor(cl))
 
 ## Can we create a better metric?
 
-What if we take a weighted average to calculate the overall score where 0.4 comes from the NBME exam and 0.6 is a combination of :
+What if we take a weighted average to calculate the overall score where 0.4 comes from the NBME exam,since it is independent from the instructor's coursework but correlated with a student success, and 0.6 is a combination of:
 
 -   quiz scores
 
@@ -225,7 +226,10 @@ ggplot(aes(y=PC2,x=PC1,color=pass))+
   geom_jitter()
 ```
 
+Not like the original design which has a clear cut-off, this metric however can better reflect student overall performance in all fields, those who has a lower score tends to perform worse in most of other fields
+
 ```{r}
+#| include: false
 #| fig-width: 10
 #| fig-height: 10
 # 
