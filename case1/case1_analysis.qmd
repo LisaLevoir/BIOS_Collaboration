@@ -69,6 +69,7 @@ Background given in the case description: "The course lasts twelve weeks. Throug
 There are `r length(unique(dt$id))` students. `r sum(dt$final <= 70)` students scored below 70 on the final exam which is grounds for an immediate failing threshold. `r sum(dt$final <= 80) - sum(dt$final <=70)` students scored between a 70 & 80 on the final which could be considered students for further scrutiny.
 
 ```{r}
+#| warning: false
 label(dt$quiz)      <- "Quiz score (mean weekly performance)"
 label(dt$nbme)      <- "National Board of Medical Examiners score"
 label(dt$ga)        <- "Gross anatomy (mean score)"
