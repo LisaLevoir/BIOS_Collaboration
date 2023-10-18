@@ -26,7 +26,6 @@ engine: knitr
 ---
 
 ```{r setup, echo = FALSE, warning=FALSE, message=FALSE}
-
 library(tidyverse)
 library(plotly)
 library(dplyr)
@@ -35,7 +34,6 @@ library(knitr)
 library(table1) #Create HTML Tables of Descriptive Statistics https://cran.r-project.org/web/packages/table1/vignettes/table1-examples.html
 #library(OMTM1) #https://github.com/schildjs/OMTM1/
 library(Hmisc)
-
 library(rms) # Regression Modeling Strategies by Frank https://cran.r-project.org/web/packages/rms/index.html
 library(modelsummary) #Summary Tables and Plots for Statistical Models and Data: Beautiful, Customizable, and Publication-Ready https://cran.r-project.org/web/packages/modelsummary/index.html
 library(scales) # The scales packages provides the internal scaling infrastructure used by ggplot2, and gives you tools to override the default breaks, labels, transformations and palettes. https://scales.r-lib.org
@@ -57,7 +55,7 @@ HMSdat <- read.csv("/Users/lisalevoir/BIOS7351_Collab/data_project2/DATA_HMS.csv
 UVAdat <- read.csv("/Users/lisalevoir/BIOS7351_Collab/data_project2/DATA_UVA.csv")
 ```
 
-
+Profiling the missingness (might be from dropdown questions) as well as describing the dataset (a very long description if we want to browse it).
 ```{r data_explortaion, warning=FALSE, message=FALSE}
 p1 <- vis_miss(dat)
 p2 <- vis_miss(HMSdat)
