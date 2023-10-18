@@ -1,0 +1,71 @@
+---
+title: "USMLE Data Analysis"
+author: "Lisa Levoir"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+format: 
+  html:
+        theme: yeti
+        code-fold: true
+        code-tools: true
+        html-math-method: katex
+        toc: true
+        toc-depth: 3
+        fig-width: 13
+        fig-height: 10
+        toc-title: "Contents"
+        number-sections: true
+        self-contained: true
+        self-contained-math: true
+        smooth-scroll: true
+        fontsize: 0.8em
+        title-block-banner: true
+        citation-location: margin
+        include-after-body: graph_fold.html
+editor: visual
+engine: knitr
+---
+
+```{r setup, echo = FALSE, warning=FALSE, message=FALSE}
+
+library(tidyverse)
+library(plotly)
+library(dplyr)
+library(tidyr)
+library(knitr)
+library(table1) #Create HTML Tables of Descriptive Statistics https://cran.r-project.org/web/packages/table1/vignettes/table1-examples.html
+#library(OMTM1) #https://github.com/schildjs/OMTM1/
+library(Hmisc)
+
+library(rms) # Regression Modeling Strategies by Frank https://cran.r-project.org/web/packages/rms/index.html
+library(modelsummary) #Summary Tables and Plots for Statistical Models and Data: Beautiful, Customizable, and Publication-Ready https://cran.r-project.org/web/packages/modelsummary/index.html
+library(scales) # The scales packages provides the internal scaling infrastructure used by ggplot2, and gives you tools to override the default breaks, labels, transformations and palettes. https://scales.r-lib.org
+library(viridis) #colors
+library(cowplot) #allows me to use plotgrid
+library(gridExtra) #adding tables to plots
+library(visdat) #shows missing data
+
+setwd("/Users/lisalevoir/BIOS7351_Collab/data_project2") #this line I would need to run in the console
+knitr::opts_knit$set(root.dir = "/Users/lisalevoir/BIOS7351_Collab/github/BIOS_Collaboration/project_2_analysis") #now I set global options for knitting, I also had to toggle global options > R Markdown > evaluate chunks in current directory
+
+
+#import the data
+dat <- read.csv("/Users/lisalevoir/BIOS7351_Collab/data_project2/combined_data_203.csv") # baseline information + days from randomization to an event
+
+#to compare that the merging went as expected
+VUMSdat <- read.csv("/Users/lisalevoir/BIOS7351_Collab/data_project2/DATA_VUMS.csv")
+HMSdat <- read.csv("/Users/lisalevoir/BIOS7351_Collab/data_project2/DATA_HMS.csv")
+UVAdat <- read.csv("/Users/lisalevoir/BIOS7351_Collab/data_project2/DATA_UVA.csv")
+```
+
+
+```{r data_explortaion, warning=FALSE, message=FALSE}
+p1 <- vis_miss(dat)
+p2 <- vis_miss(HMSdat)
+p3 <- vis_miss(VUMSdat)
+p4 <- vis_miss(UVAdat)
+
+plot_grid(p1, p2, p3, p4)
+
+describe(dat)
+```
+
