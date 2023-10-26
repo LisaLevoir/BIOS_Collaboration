@@ -55,15 +55,134 @@ HMSdat <- read.csv("/Users/lisalevoir/BIOS7351_Collab/data_project2/DATA_HMS.csv
 UVAdat <- read.csv("/Users/lisalevoir/BIOS7351_Collab/data_project2/DATA_UVA.csv")
 ```
 
-Profiling the missingness (might be from dropdown questions) as well as describing the dataset (a very long description if we want to browse it).
-```{r data_explortaion, warning=FALSE, message=FALSE}
-p1 <- vis_miss(dat)
-p2 <- vis_miss(HMSdat)
-p3 <- vis_miss(VUMSdat)
-p4 <- vis_miss(UVAdat)
+### Setup
 
-plot_grid(p1, p2, p3, p4)
+Criteria to exclude students who most likely took a scored exam:
 
-describe(dat)
+1.  Any PhD students (n = 2)
+
+2.  Any 5th year program students (n = 19)
+
+3.   M4 students at Vanderbilt (n = 5)
+
+4.  Students who did not complete either Step survey (n = 2)
+
+5.  Students who specifically stated they took a scored Step 1 (n=1)
+
+Based on our criteria we would exclude record IDs: 
+
+-   VUSM: 23, 26, 39, 40, 54, 3, 8, 12, 49, 60, 62, 64 
+
+-   HMS: 1, 21, 28, 30, 34, 37, 39, 41, 44, 47, 49, 61 
+
+-   UVA: 33, 47, 80, 81, 83 
+
+```{r data_cleaning, warning=FALSE, message=FALSE}
+#the list of IDs we decided as a group to exclude
+excludeVU <- c(23, 26, 39, 40, 54, 3, 8, 12, 49, 60, 62, 64)
+excludeHMS <- c(1, 21, 28, 30, 34, 37, 39, 41, 44, 47, 49, 61)
+excludeUVA <- c(33, 47, 80, 81, 83)
+
+'%!in%' <- function(x,y)!('%in%'(x,y)) #make a way to use the not in command
+VU_in <- filter(VUMSdat, record_id  %!in%  excludeVU)
+H_in <- filter(HMSdat, record_id  %!in%  excludeHMS)
+UVA_in <- filter(UVAdat, record_id  %!in%  excludeUVA)
+
+#now I want to select the columns I'd like to include for all of my analysis (so they're in the proper order for a cbind). this will be relatively easy to come back to edit later, if needed. 
+
+#first, remember to include a school identifier
+VU_in[,"schoolid"] <- "VU"
+UVA_in[,"schoolid"] <- "UVa"
+H_in[,"schoolid"] <- "HMS"
+
+took_step1_firstVU <-
+  VU_in %>% select(
+    starts_with("uworld_percent_step1_1"),
+    starts_with("amboss_percent_step1_1"),
+    starts_with("length_step1_1"),
+    starts_with("practicetest_step1_1"),
+    starts_with("full_test_practice_step1_1"),
+    starts_with("push_step1_1"),
+    starts_with("push_practice_test_step1_1"),
+    starts_with("push_nbme_practice_score_step1_1"),
+    starts_with("push_uw_practice_score_step1_1"),
+    starts_with("final_nbme_practice_score_step1_1"),
+    starts_with("final_uw_practice_score_step1_1"),
+    starts_with("score_step1_1"),
+    "schoolid"
+  ) #note, I removed ""number_other_courses_step1_1" and starts_with("other_courses_step1_1___1) because these questions were not on the other school surveys
+
+took_step1_firstUVA <-
+  UVA_in %>% select(
+    starts_with("uworld_percent_step1_1"),
+    starts_with("amboss_percent_step1_1"),
+    starts_with("length_step1_1"),
+    starts_with("practicetest_step1_1"),
+    starts_with("full_test_practice_step1_1"),
+    starts_with("push_step1_1"),
+    starts_with("push_practice_test_step1_1"),
+    starts_with("push_nbme_practice_score_step1_1"),
+    starts_with("push_uw_practice_score_step1_1"),
+    starts_with("final_nbme_practice_score_step1_1"),
+    starts_with("final_uw_practice_score_step1_1"),
+    starts_with("score_step1_1"),
+    "schoolid"
+  )
+
+took_step1_firstH <-
+  H_in %>% select(
+    starts_with("uworld_percent_step1_1"),
+    starts_with("amboss_percent_step1_1"),
+    starts_with("length_step1_1"),
+    starts_with("practicetest_step1_1"),
+    starts_with("full_test_practice_step1_1"),
+    starts_with("push_step1_1"),
+    starts_with("push_practice_test_step1_1"),
+    starts_with("push_nbme_practice_score_step1_1"),
+    starts_with("push_uw_practice_score_step1_1"),
+    starts_with("final_nbme_practice_score_step1_1"),
+    starts_with("final_uw_practice_score_step1_1"),
+    starts_with("score_step1_1"),
+    "schoolid"
+  )
+
+
+took_step1_first<- rbind(took_step1_firstH, took_step1_firstUVA, took_step1_firstVU) #great! this is clean data. I can follow a similar process for the other data. This cleaned data set is less relevant since we can't run logistic regression since all participants passed, but it is a good proof of the workflow.
+
+
 ```
 
+
+this was another tactic I was trying but frustratingly, the class of different columns was changed between surveys. So far, I have abandoned this technique in favor of the above, where I am affirmativly selecting the columns (but I still may run into the different class issue)
+```{r}
+#try dropping problematic columns and then do bind_rows
+# removeextracolsH <-
+#   H_in %>% select(
+#     -c(
+#       "vusmhms_usmle_trends_survey_timestamp",
+#       "vusmhms_usmle_trends_survey_complete"
+#     ),
+#     contains("number_other_courses")
+#   )
+# setdiff(names(H_in), names(UVA_in))
+# setdiff(names(removeextracolsH), names(UVA_in))
+# 
+# removeextracolsUVA <-
+#   UVA_in %>% select(
+#     -contains("number_other_courses"),
+#     -c(
+#       "vusmuva_usmle_trends_survey_timestamp",
+#       "vusmuva_usmle_trends_survey_complete"
+#     )
+#   )
+# setdiff(names(removeextracolsUVA), names(removeextracolsH)) #confirming the cols match now
+# 
+# removeextracolsVU <- VU_in %>% select(-contains("number_other_courses"), -contains("other_courses"))
+# setdiff(names(removeextracolsUVA), names(removeextracolsVU)) #confirming the cols match now
+# 
+# class(removeextracolsH$practicetest_step1_1) <- "integer" #this column was coded as a character so it wouldn't merge previously
+# bind_rows(list(removeextracolsVU, removeextracolsH), .id = "id")
+
+```
+
+### Profile missingness for students who conducted only one Step Survey
