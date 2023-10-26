@@ -5,7 +5,7 @@ date: "`r format(Sys.time(), '%B %d, %Y')`"
 format: 
   html:
         theme: yeti
-        code-fold: true
+        #code-fold: true
         code-tools: true
         html-math-method: katex
         toc: true
@@ -41,6 +41,7 @@ library(viridis) #colors
 library(cowplot) #allows me to use plotgrid
 library(gridExtra) #adding tables to plots
 library(visdat) #shows missing data
+library(GGally) #makes pairs plots
 
 setwd("/Users/lisalevoir/BIOS7351_Collab/data_project2") #this line I would need to run in the console
 knitr::opts_knit$set(root.dir = "/Users/lisalevoir/BIOS7351_Collab/github/BIOS_Collaboration/project_2_analysis") #now I set global options for knitting, I also had to toggle global options > R Markdown > evaluate chunks in current directory
@@ -213,7 +214,7 @@ tf = function(x,y) {
 }  #https://stackoverflow.com/questions/75068871/add-p-value-and-or-95-ci-in-the-text-of-a-correlation-matrix-pairs-plot
 
 
-library(GGally)
+
 
 class(took_step2_second$practice_score_step2_2) <- "integer"
 class(took_step2_second$score_step2_2) <- "integer"
@@ -223,7 +224,7 @@ ggpairs(took_step2_second, title="Pairs plots", upper=list(continuous=wrap("stat
 ```
 
 
-
+# another note
 this was another tactic I was trying but frustratingly, the class of different columns was changed between surveys. So far, I have abandoned this technique in favor of the above, where I am affirmativly selecting the columns (but I still may run into the different class issue)
 ```{r}
 #try dropping problematic columns and then do bind_rows
@@ -256,4 +257,4 @@ this was another tactic I was trying but frustratingly, the class of different c
 
 ```
 
-### Profile missingness for students who conducted only one Step Survey
+### remember to profile missingness for students who conducted only one Step Survey
