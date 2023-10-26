@@ -149,8 +149,79 @@ took_step1_firstH <-
 
 took_step1_first<- rbind(took_step1_firstH, took_step1_firstUVA, took_step1_firstVU) #great! this is clean data. I can follow a similar process for the other data. This cleaned data set is less relevant since we can't run logistic regression since all participants passed, but it is a good proof of the workflow.
 
+visdat::vis_miss(took_step1_first) #shows a lot of missing data
+```
+
+```{r data_cleaning_forstep2, warning=FALSE, message=FALSE}
+#these are the variables I can actually analyze
+table(VU_in$score_step2_2) 
+table(VU_in$score_step2_1)
+
+took_step2_VU <-
+  VU_in %>% select(
+    starts_with("uworld_percent_step2"),
+    starts_with("amboss_percent_step2"),
+    starts_with("length_step2"),
+    starts_with("practicetest_step2"),
+    starts_with("full_test_practice_step2"),
+    starts_with("practice_score_step2"),
+    starts_with("score_step2"),
+    starts_with("target_score_step2"),
+    "schoolid"
+  ) #note, I removed ""number_other_courses_step1_1" and starts_with("other_courses_step1_1___1) because these questions were not on the other school surveys
+
+took_step2_UVA <-
+  UVA_in %>% select(
+    starts_with("uworld_percent_step2"),
+    starts_with("amboss_percent_step2"),
+    starts_with("length_step2"),
+    starts_with("practicetest_step2"),
+    starts_with("full_test_practice_step2"),
+    starts_with("practice_score_step2"),
+    starts_with("score_step2"),
+    starts_with("target_score_step2"),
+    "schoolid"
+  )
+
+took_step2_H <-
+  H_in %>% select(
+    starts_with("uworld_percent_step2"),
+    starts_with("amboss_percent_step2"),
+    starts_with("length_step2"),
+    starts_with("practicetest_step2"),
+    starts_with("full_test_practice_step2"),
+    starts_with("practice_score_step2"),
+    starts_with("score_step2"),
+    starts_with("target_score_step2"),
+    "schoolid"
+  )
+
+took_step2general <- rbind(took_step2_H, took_step2_UVA, took_step2_VU)
+
+took_step2_first <- took_step2general %>% select(ends_with("_1"), "schoolid")
+took_step2_second <- took_step2general %>% select(ends_with("_2"), "schoolid")
+visdat::vis_miss(took_step2_first) #looks like a school specific trend with who is answering what question...
+visdat::vis_miss(took_step2_second) #looks like a school specific trend with who is answering what question...
+
+# mod1 <- lm(score_step2_2 ~ ., data = took_step2_second) #so this is nonsense right now but just seeing what would happen
+# summary(mod1)
+
+tf = function(x,y) {
+  ct <- cor.test(x, y)
+  sprintf("Corr: %0.2f, p: %0.3f\n95%% CI: (%0.2f - %0.2f) \n n pairs = %.0f", 
+          ct$estimate, ct$p.value, ct$conf.int[1], ct$conf.int[2], sum(!is.na(x), !is.na(y))/2)
+}  #https://stackoverflow.com/questions/75068871/add-p-value-and-or-95-ci-in-the-text-of-a-correlation-matrix-pairs-plot
+
+
+library(GGally)
+
+class(took_step2_second$practice_score_step2_2) <- "integer"
+class(took_step2_second$score_step2_2) <- "integer"
+ggpairs(took_step2_second, title="Pairs plots", upper=list(continuous=wrap("statistic",text_fn=tf,title=NULL, sep=NULL)), progress = FALSE) #well this means it's time to take a break
+
 
 ```
+
 
 
 this was another tactic I was trying but frustratingly, the class of different columns was changed between surveys. So far, I have abandoned this technique in favor of the above, where I am affirmativly selecting the columns (but I still may run into the different class issue)
