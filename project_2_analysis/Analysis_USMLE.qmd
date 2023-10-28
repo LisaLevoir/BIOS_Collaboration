@@ -5,7 +5,7 @@ date: "`r format(Sys.time(), '%B %d, %Y')`"
 format: 
   html:
         theme: flatly
-        #code-fold: true
+        code-fold: true
         code-tools: true
         html-math-method: katex
         toc: true
@@ -25,6 +25,9 @@ editor: visual
 engine: knitr
 ---
 
+
+# Data import and cleaning
+In this section I import the data and prepare it for analysis.
 ```{r setup, echo = FALSE, warning=FALSE, message=FALSE}
 library(tidyverse)
 library(plotly)
@@ -56,7 +59,7 @@ HMSdat <- read.csv("/Users/lisalevoir/BIOS7351_Collab/data_project2/DATA_HMS.csv
 UVAdat <- read.csv("/Users/lisalevoir/BIOS7351_Collab/data_project2/DATA_UVA.csv")
 ```
 
-### Setup
+### Inclusion/Exclusion
 
 Criteria to exclude students who most likely took a scored exam:
 
@@ -106,6 +109,7 @@ H_in[,"schoolid"] <- "HMS"
 ##note, for VU I removed ""number_other_courses_step1_1" and starts_with("other_courses_step1_1___1) because these questions were not on the other school surveys
 took_step1_VU <-
   VU_in %>% select(
+    starts_with("record_id"),
     starts_with("uworld_percent_step1"),
     starts_with("amboss_percent_step1"),
     starts_with("length_step1"),
@@ -123,6 +127,7 @@ took_step1_VU <-
 
 took_step1_UVA <-
   UVA_in %>% select(
+    starts_with("record_id"),
     starts_with("uworld_percent_step1"),
     starts_with("amboss_percent_step1"),
     starts_with("length_step1"),
@@ -140,6 +145,7 @@ took_step1_UVA <-
 
 took_step1_H <-
   H_in %>% select(
+    starts_with("record_id"),
     starts_with("uworld_percent_step1"),
     starts_with("amboss_percent_step1"),
     starts_with("length_step1"),
@@ -162,10 +168,35 @@ took_step1general <- rbind(took_step1_H, took_step1_UVA, took_step1_VU)
 took_step1_first <- took_step1general %>% select(ends_with("_1"), "schoolid")
 took_step1_second <- took_step1general %>% select(ends_with("_2"), "schoolid")
 
-# profiling missing data (must discuss!!)
-visdat::vis_miss(took_step1general) 
-visdat::vis_miss(took_step1_first) #looks like a school specific trend with who is answering what question...
-visdat::vis_miss(took_step1_second) #looks like a school specific trend with who is answering what question...
+#this function will accommodate for the survey which split up the step 2 responses by whether it was taken first or second. I would like to run analysis (and gather percent missing) across all scores as they are available. I can add an indicator column later to identify people who took it first/second. The idea with this function is the output (called storage_df) should be easy to colbind onto the original data frame. Voila!
+#also if we decide to change our minds and include more variables it will be quick to run.
+merge_my_columns <- function(input_cols, source_df){
+storage_df <- as.data.frame(matrix(nrow = nrow(source_df), ncol = length(input_cols)))
+names(storage_df) <- input_cols
+for(i in 1:length(input_cols)) {
+  cols <- source_df %>% select(starts_with(input_cols[i])) %>% names()
+  print(cols)
+  new_cobined_col <-coalesce(source_df[, cols[1]], source_df[, cols[2]])
+  storage_df[, i] <- new_cobined_col
+}
+print("Above is a list of columns I have combined for you. Hope it looks right!")
+return(storage_df)
+}
+
+######## combine results across exam order for Step 2
+class(took_step1general$practicetest_step1_1) <- "integer" #had to change class in order to coalesce these
+class(took_step1general$practicetest_step1_2) <- "integer" 
+class(took_step1general$push_uw_practice_score_step1_2) <- "logical"
+
+cols_step1 <- c("uworld_percent_step1", "amboss_percent_step1", "length_step1", "practicetest_step1","full_test_practice_step1", "push_step1", "push_practice_test_step1",  "push_nbme_practice_score_step1",  "push_uw_practice_score_step1" ,"final_nbme_practice_score_step1", "final_uw_practice_score_step1", "score_step1")
+
+to_add <- merge_my_columns(input_cols = cols_step1, source_df = took_step1general)
+
+table(to_add$score_step1) ## all step 1 scores have an outcome so there is no one to drop/filter out
+step1_complete <- bind_cols(took_step1general, to_add) %>% select(record_id, schoolid:score_step1)
+
+######### visually profile missing responses
+visdat::vis_miss(step1_complete)+ ggtitle("Response missingness for pooled Step 1 survey results")
 ```
 
 ```{r data_cleaning_forstep2, warning=FALSE, message=FALSE}
@@ -215,52 +246,57 @@ took_step2_H <-
   )
 
 took_step2general <- rbind(took_step2_H, took_step2_UVA, took_step2_VU)
-took_step2_first <- took_step2general %>% select(ends_with("_1"), "schoolid")
+took_step2_first <- took_step2general %>% select(ends_with("_1"), "schoolid") #don't plan on using these, but available if needed
 took_step2_second <- took_step2general %>% select(ends_with("_2"), "schoolid")
-visdat::vis_miss(took_step2_first) #looks like a school specific trend with who is answering what question...
-visdat::vis_miss(took_step2_second) #looks like a school specific trend with who is answering what question...
 
-
-profile_missing <- took_step2general[,c("schoolid", "record_id", "practice_score_step2_1", "practice_score_step2_2", "score_step2_1", "score_step2_2")]
-profile_missing[,"present_practice"] <- ifelse(!is.na(profile_missing[,2]) | !is.na(profile_missing[,3]), 1, 0)
-profile_missing[,"present_score"] <- ifelse(!is.na(profile_missing[,4]) | !is.na(profile_missing[,5]), 1, 0)
-
-table(profile_missing$present_practice)
-table(profile_missing$present_score) #drop the people who don't have a score
-
-profile_missing[,"practice_score"] <- coalesce(profile_missing$score_step2_1 , profile_missing$score_step2_2)
-
-
-#combine
+########combine results across exam order for Step 2
 class(took_step2general$practice_score_step2_2) <- "integer" #had to change class in order to coalesce these
 class(took_step2general$score_step2_1) <- "integer"
 class(took_step2general$score_step2_2) <- "integer"
 
 columns_to_summarize <- c("uworld_percent_step2", "amboss_percent_step2", "length_step2", "practicetest_step2","full_test_practice_step2", "practice_score_step2", "practice_test_step2", "score_step2","target_score_step2")
 
-#this function will accommodate for the survey which split up the step 2 responses by whether it was taken first or second. I would like to run analysis (and gather percent missing) across all scores as they are available. I can add an indicator column later to identify people who took it first/second. The idea with this function is the output (called storage_df) should be easy to colbind onto the original data frame. Voila!
-#also if we decide to change our minds and include more variables it will be quick to run.
-merge_my_columns <- function(input_cols, source_df){
-storage_df <- as.data.frame(matrix(nrow = nrow(source_df), ncol = length(input_cols)))
-names(storage_df) <- input_cols
-for(i in 1:length(input_cols)) {
-  cols <- source_df %>% select(starts_with(columns_to_summarize[i])) %>% names()
-  print(cols)
-  new_cobined_col <-coalesce(source_df[, cols[1]], source_df[, cols[2]])
-  storage_df[, i] <- new_cobined_col
-}
-print("Above is a list of columns I have combined for you. Hope it looks right!")
-return(storage_df)
-}
-
 to_add <- merge_my_columns(input_cols = columns_to_summarize, source_df = took_step2general)
 drop_these_with_no_outcome <- bind_cols(took_step2general, to_add) %>% filter(is.na(score_step2)) %>% select("record_id", "schoolid")
 intermediate_step2 <- bind_cols(took_step2general, to_add) %>% filter(!is.na(score_step2))
 step2_complete <- intermediate_step2 %>% select(record_id, schoolid:target_score_step2)
 
+visdat::vis_miss(step2_complete)+ ggtitle("Response missingness for pooled Step 2 survey results")
+```
+# Analysis
 
+Note, we plan to use the robust/sandwich variance estimator for regression models. One inclusion criteria is that the outcome variable ("Y") must be available for a subject to be included in the analysis question (ie. if they did not report a step 2 score, we won't perform relevant step 2 analysis on them).
+
+## Does order have an impact on Step 2 scores?
+We cannot analyze Step 1 since all survey responses reported passing
+
+Linear regression with:
+ Y = Step 2 score
+ X = binary (0 = took step 2 first, 1 = step 2 second)
+ Z = school (need to adjust for this)
+ 
+## What factors affect Step 2 score?
+Again, we cannot analyze Step 1 scores since all respondents reported passing.
+
+If there are any covariates with more than 30% of responses missing, we will drop that variable or populate it with 0, depending on context. For example, the percent of Amboss questions completed will be filled with 0 for people who didn't answer since it seems safe to assume they didn't complete any of the Amboss questions. If less than 30% are missing, I may consider performing bootstrap sampling of known values to replace missing values. 
+
+Analysis plan is to first assess for co-linearity of the predictors (ie. correlation). If there is high co-linearity, we will use LASSO to perform variable selection.
+
+Multiple linear regression with:
+Y = Step 2 score
+X1 = % UWorld
+X2 = % Amboss
+X3 = length study
+X4 = # of practice tests
+X5 = full test day (yes/no code as binary)
+X6 = final practice score (however, is there some conversion between U World and Amboss - Jeffrey is looking into this)
+Z = School (need to adjust for this)
+
+```{r}
 ######## profile missingness in the step 2 data and address
 percents_missing <- round(colSums(is.na(step2_complete))/nrow(step2_complete), 3)*100
+kable(percents_missing)
+
 #inspecting percent missing, it seems like most responses are now complete except Amboss. Based on our study plan, I will populate those without a response for Amboss with 0's
 step2_complete$amboss_percent_step2 <- ifelse(is.na(step2_complete$amboss_percent_step2) == TRUE, 0, step2_complete$amboss_percent_step2)
 class(step2_complete$practicetest_step2) <- "integer"
@@ -274,56 +310,60 @@ tf = function(x,y) {
           ct$estimate, ct$p.value, ct$conf.int[1], ct$conf.int[2], sum(!is.na(x), !is.na(y))/2)
 }  #https://stackoverflow.com/questions/75068871/add-p-value-and-or-95-ci-in-the-text-of-a-correlation-matrix-pairs-plot
 
-ggpairs(step2_complete[,c("uworld_percent_step2", "amboss_percent_step2", "length_step2",      "practicetest_step2",  "full_test_practice_step2", "practice_score_step2", "practice_test_step2", "on_target", "score_step2")], title="Step 2 scores and predictors pairs plots", upper=list(continuous=wrap("statistic",text_fn=tf,title=NULL, sep=NULL)), progress = FALSE) #well this means it's time to take a break
+ggpairs(step2_complete[,c("uworld_percent_step2", "amboss_percent_step2", "length_step2", "practicetest_step2",  "full_test_practice_step2", "practice_score_step2", "practice_test_step2", "on_target", "score_step2")], title="Step 2 scores and predictors pairs plots", upper=list(continuous=wrap("statistic",text_fn=tf,title=NULL, sep=NULL)), progress = FALSE)
+
 
 mod1 <- lm(score_step2~ I(schoolid) + uworld_percent_step2 + amboss_percent_step2 + on_target, data = step2_complete)
 summary(mod1)
+
 ```
 
 
+## What is associated (in this data) with pushing back a Step 1 exam date?
+Here, I will perform logistic regression with 
 
+Y = yes or no (1 = yes, 2 = no  for "push_step1")
 
-## what about profiling the data we have for if they pushed back an exam? 
-It doesn't look like there is a question related to pushing back step 2, just step 1. Is that okay?
+there may not be sufficient data on this. The factors that were measured are:
+-push remember step1 (1 = I only remember the form name, 2 = I only remember the score, 3 = I remember the form name and the score, 4 = I don't remember either)
+- push score only step 1 (1 = NBME, 2 = Uworld)
+- push practice test step 1 ( 1 - 8 listing various exams)
+- push nbme practice score (from 0 to 100%)
+- push uw practice score (from 180 to 300)
+
 ```{r}
-describe(took_step1general$push_step1_1)
-describe(took_step1general$push_step1_2)
+
 ```
 
-## remember to profile missingness for students who conducted only one Step Survey
 
+## Descriptive Statistics
+Descriptive statistics will be reported by school and total. 
 
-### data cleaning note (discuss as a group if this is a useful data cleaning path anyways)
-this was another tactic I was trying but frustratingly, the class of different columns was changed between surveys. So far, I have abandoned this technique in favor of the above, where I am affirmatively selecting the columns (but I still may run into the different class issue)
+- histogram of Step 2 scores
+- what resources are most widely used barplot
+- how long did students study barplot
+- number of practice tests histogram (among the people who answered the question)
+- summarize comments (other_resources, other_step, changes_step)
+
 ```{r}
-#try dropping problematic columns and then do bind_rows
-# removeextracolsH <-
-#   H_in %>% select(
-#     -c(
-#       "vusmhms_usmle_trends_survey_timestamp",
-#       "vusmhms_usmle_trends_survey_complete"
-#     ),
-#     contains("number_other_courses")
-#   )
-# setdiff(names(H_in), names(UVA_in))
-# setdiff(names(removeextracolsH), names(UVA_in))
-# 
-# removeextracolsUVA <-
-#   UVA_in %>% select(
-#     -contains("number_other_courses"),
-#     -c(
-#       "vusmuva_usmle_trends_survey_timestamp",
-#       "vusmuva_usmle_trends_survey_complete"
-#     )
-#   )
-# setdiff(names(removeextracolsUVA), names(removeextracolsH)) #confirming the cols match now
-# 
-# removeextracolsVU <- VU_in %>% select(-contains("number_other_courses"), -contains("other_courses"))
-# setdiff(names(removeextracolsUVA), names(removeextracolsVU)) #confirming the cols match now
-# 
-# class(removeextracolsH$practicetest_step1_1) <- "integer" #this column was coded as a character so it wouldn't merge previously
-# bind_rows(list(removeextracolsVU, removeextracolsH), .id = "id")
+## facet wrap on the schools
+## use a unified color scheme
 
 ```
+
+
+# Appendix/notes
+All the analyses are performed using the following:
+
+-   R version 4.2.2 (2022-06-24); R Core Team (2022). R: A language and environment for statistical computing. R Foundation for Statistical Computing, Vienna, Austria. URL https://www.R-project.org/.
+
+-   Harrell Jr FE (2022). rms: Regression Modeling Strategies. R package version 6.3-0, <https://CRAN.R-project.org/package=rms>.
+
+The table below lists packages used in this document.
+
+```{r}
+subset(data.frame(sessioninfo::package_info()), attached==TRUE, c(package, loadedversion))
+```
+
 
 
