@@ -25,10 +25,16 @@ editor: visual
 engine: knitr
 ---
 
-
 # Data import and cleaning
+
 In this section I import the data and prepare it for analysis.
-```{r setup, echo = FALSE, warning=FALSE, message=FALSE}
+
+```{r setup}
+#| warning: false
+#| message: false
+#| echo: fenced
+
+
 library(tidyverse)
 library(plotly)
 library(dplyr)
@@ -63,15 +69,15 @@ UVAdat <- read.csv("/Users/lisalevoir/BIOS7351_Collab/data_project2/DATA_UVA.csv
 
 Criteria to exclude students who most likely took a scored exam:
 
-1.  Any PhD students (n = 2)
+-   Any PhD students (n = 2)
 
-2.  Any 5th year program students (n = 19)
+-   Any 5th year program students (n = 19)
 
-3.   M4 students at Vanderbilt (n = 5)
+-   M4 students at Vanderbilt (n = 5)
 
-4.  Students who did not complete either Step survey (n = 2)
+-   Students who did not complete either Step survey (n = 2)
 
-5.  Students who specifically stated they took a scored Step 1 (n=1)
+-   Students who specifically stated they took a scored Step 1 (n=1)
 
 Based on our criteria we would exclude record IDs:
 
@@ -81,7 +87,10 @@ Based on our criteria we would exclude record IDs:
 
 -   UVA: 33, 47, 80, 81, 83
 
-```{r data_cleaning, warning=FALSE, message=FALSE}
+```{r data_cleaning}
+#| warning: false
+#| message: false
+
 #the list of IDs we decided as a group to exclude
 excludeVU <- c(23, 26, 39, 40, 54, 3, 8, 12, 49, 60, 62, 64)
 excludeHMS <- c(1, 21, 28, 30, 34, 37, 39, 41, 44, 47, 49, 61)
@@ -199,7 +208,10 @@ step1_complete <- bind_cols(took_step1general, to_add) %>% select(record_id, sch
 visdat::vis_miss(step1_complete)+ ggtitle("Response missingness for pooled Step 1 survey results")
 ```
 
-```{r data_cleaning_forstep2, warning=FALSE, message=FALSE}
+```{r data_cleaning_forstep2}
+#| warning: false
+#| message: false
+
 took_step2_VU <-
   VU_in %>% select(
     starts_with("record_id"),
@@ -263,36 +275,53 @@ step2_complete <- intermediate_step2 %>% select(record_id, schoolid:target_score
 
 visdat::vis_miss(step2_complete)+ ggtitle("Response missingness for pooled Step 2 survey results")
 ```
+
 # Analysis
 
 Note, we plan to use the robust/sandwich variance estimator for regression models. One inclusion criteria is that the outcome variable ("Y") must be available for a subject to be included in the analysis question (ie. if they did not report a step 2 score, we won't perform relevant step 2 analysis on them).
 
-## Does order have an impact on Step 2 scores?
+::: panel-tabset
+## Q1 Does order have an impact on Step 2 scores?
+
 We cannot analyze Step 1 since all survey responses reported passing
 
 Linear regression with:
- Y = Step 2 score
- X = binary (0 = took step 2 first, 1 = step 2 second)
- Z = school (need to adjust for this)
- 
-## What factors affect Step 2 score?
+
+-   Y = Step 2 score
+
+-   X = binary (0 = took step 2 first, 1 = step 2 second)
+
+-   Z = school (need to adjust for this)
+
+
+## Q2 What factors affect Step 2 score?
+
 Again, we cannot analyze Step 1 scores since all respondents reported passing.
 
-If there are any covariates with more than 30% of responses missing, we will drop that variable or populate it with 0, depending on context. For example, the percent of Amboss questions completed will be filled with 0 for people who didn't answer since it seems safe to assume they didn't complete any of the Amboss questions. If less than 30% are missing, I may consider performing bootstrap sampling of known values to replace missing values. 
+If there are any covariates with more than 30% of responses missing, we will drop that variable or populate it with 0, depending on context. For example, the percent of Amboss questions completed will be filled with 0 for people who didn't answer since it seems safe to assume they didn't complete any of the Amboss questions. If less than 30% are missing, I may consider performing bootstrap sampling of known values to replace missing values.
 
 Analysis plan is to first assess for co-linearity of the predictors (ie. correlation). If there is high co-linearity, we will use LASSO to perform variable selection.
 
 Multiple linear regression with:
-Y = Step 2 score
-X1 = % UWorld
-X2 = % Amboss
-X3 = length study
-X4 = # of practice tests
-X5 = full test day (yes/no code as binary)
-X6 = final practice score (however, is there some conversion between U World and Amboss - Jeffrey is looking into this)
-Z = School (need to adjust for this)
+
+-   Y = Step 2 score
+
+-   X1 = % UWorld
+
+-   X2 = % Amboss
+
+-   X3 = length study
+
+-   X4 = \# of practice tests
+
+-   X5 = full test day (yes/no code as binary)
+
+-   X6 = final practice score (however, is there some conversion between U World and Amboss - Jeffrey is looking into this)
+
+-   Z = School (need to adjust for this)
 
 ```{r}
+#| warning: false
 ######## profile missingness in the step 2 data and address
 percents_missing <- round(colSums(is.na(step2_complete))/nrow(step2_complete), 3)*100
 kable(percents_missing)
@@ -318,32 +347,38 @@ summary(mod1)
 
 ```
 
+## Q3 What is associated (in this data) with pushing back a Step 1 exam date?
 
-## What is associated (in this data) with pushing back a Step 1 exam date?
-Here, I will perform logistic regression with 
+Here, I will perform logistic regression with
 
-Y = yes or no (1 = yes, 2 = no  for "push_step1")
+Y = yes or no (1 = yes, 2 = no for "push_step1")
 
-there may not be sufficient data on this. The factors that were measured are:
--push remember step1 (1 = I only remember the form name, 2 = I only remember the score, 3 = I remember the form name and the score, 4 = I don't remember either)
-- push score only step 1 (1 = NBME, 2 = Uworld)
-- push practice test step 1 ( 1 - 8 listing various exams)
-- push nbme practice score (from 0 to 100%)
-- push uw practice score (from 180 to 300)
+There may not be sufficient data on this since only 20 people responded that they decided to push back Step 1. The factors that were measured are:
+
+-   push remember step1 (1 = I only remember the form name, 2 = I only remember the score, 3 = I remember the form name and the score, 4 = I don't remember either)
+
+-   push score only step 1 (1 = NBME, 2 = Uworld)
+
+-   push practice test step 1 ( 1 - 8 listing various exams)
+
+-   push nbme practice score (from 0 to 100%)
+
+-   push uw practice score (from 180 to 300)
 
 ```{r}
 
+
 ```
 
-
 ## Descriptive Statistics
-Descriptive statistics will be reported by school and total. 
 
-- histogram of Step 2 scores
-- what resources are most widely used barplot
-- how long did students study barplot
-- number of practice tests histogram (among the people who answered the question)
-- summarize comments (other_resources, other_step, changes_step)
+Descriptive statistics will be reported by school and total.
+
+-   histogram of Step 2 scores
+-   what resources are most widely used barplot
+-   how long did students study barplot
+-   number of practice tests histogram (among the people who answered the question)
+-   summarize comments (other_resources, other_step, changes_step)
 
 ```{r}
 ## facet wrap on the schools
@@ -352,7 +387,11 @@ Descriptive statistics will be reported by school and total.
 ```
 
 
+
+:::
+
 # Appendix/notes
+
 All the analyses are performed using the following:
 
 -   R version 4.2.2 (2022-06-24); R Core Team (2022). R: A language and environment for statistical computing. R Foundation for Statistical Computing, Vienna, Austria. URL https://www.R-project.org/.
@@ -364,6 +403,3 @@ The table below lists packages used in this document.
 ```{r}
 subset(data.frame(sessioninfo::package_info()), attached==TRUE, c(package, loadedversion))
 ```
-
-
-
