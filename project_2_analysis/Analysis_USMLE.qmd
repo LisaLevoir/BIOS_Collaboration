@@ -51,6 +51,7 @@ library(cowplot) #allows me to use plotgrid
 library(gridExtra) #adding tables to plots
 library(visdat) #shows missing data
 library(GGally) #makes pairs plots
+library(sandwich) #for robust standard errors
 
 setwd("/Users/lisalevoir/BIOS7351_Collab/data_project2") #this line I would need to run in the console
 knitr::opts_knit$set(root.dir = "/Users/lisalevoir/BIOS7351_Collab/github/BIOS_Collaboration/project_2_analysis") #now I set global options for knitting, I also had to toggle global options > R Markdown > evaluate chunks in current directory
@@ -131,6 +132,7 @@ took_step1_VU <-
     starts_with("final_nbme_practice_score_step1"),
     starts_with("final_uw_practice_score_step1"),
     starts_with("score_step1"),
+    starts_with("resources_step1"),
     "schoolid", 
     "exam_order"
   ) 
@@ -150,6 +152,7 @@ took_step1_UVA <-
     starts_with("final_nbme_practice_score_step1"),
     starts_with("final_uw_practice_score_step1"),
     starts_with("score_step1"),
+    starts_with("resources_step1"),
     "schoolid", 
     "exam_order"
   )
@@ -169,6 +172,7 @@ took_step1_H <-
     starts_with("final_nbme_practice_score_step1"),
     starts_with("final_uw_practice_score_step1"),
     starts_with("score_step1"),
+    starts_with("resources_step1"),
     "schoolid", 
     "exam_order"
   )
@@ -201,7 +205,7 @@ class(took_step1general$practicetest_step1_2) <- "integer"
 class(took_step1general$push_uw_practice_score_step1_2) <- "integer"
 class(took_step1general$push_uw_practice_score_step1_1) <- "integer"
 
-cols_step1 <- c("uworld_percent_step1", "amboss_percent_step1", "length_step1", "practicetest_step1","full_test_practice_step1", "push_step1", "push_practice_test_step1",  "push_nbme_practice_score_step1",  "push_uw_practice_score_step1" ,"final_nbme_practice_score_step1", "final_uw_practice_score_step1", "score_step1")
+cols_step1 <- c("uworld_percent_step1", "amboss_percent_step1", "length_step1", "practicetest_step1","full_test_practice_step1", "push_step1", "push_practice_test_step1",  "push_nbme_practice_score_step1",  "push_uw_practice_score_step1" ,"final_nbme_practice_score_step1", "final_uw_practice_score_step1","resources_step1",  "score_step1")
 
 to_add <- merge_my_columns(input_cols = cols_step1, source_df = took_step1general)
 #table(to_add$score_step1) ## all step 1 scores have an outcome so there is no one to drop/filter out
@@ -224,6 +228,7 @@ took_step2_VU <-
     starts_with("practice_test_step2"),
     starts_with("score_step2"),
     starts_with("target_score_step2"),
+    starts_with("resources_step2"),
     "schoolid", 
     "exam_order"
   ) #note, I removed ""number_other_courses_step1_1" and starts_with("other_courses_step1_1___1) because these questions were not on the other school surveys
@@ -240,6 +245,7 @@ took_step2_UVA <-
     starts_with("practice_test_step2"),
     starts_with("score_step2"),
     starts_with("target_score_step2"),
+    starts_with("resources_step2"),
     "schoolid", 
     "exam_order"
   )
@@ -256,6 +262,7 @@ took_step2_H <-
     starts_with("practice_test_step2"),
     starts_with("score_step2"),
     starts_with("target_score_step2"),
+    starts_with("resources_step2"),
     "schoolid", 
     "exam_order"
   )
@@ -269,7 +276,7 @@ class(took_step2general$practice_score_step2_2) <- "integer" #had to change clas
 class(took_step2general$score_step2_1) <- "integer"
 class(took_step2general$score_step2_2) <- "integer"
 
-columns_to_summarize <- c("uworld_percent_step2", "amboss_percent_step2", "length_step2", "practicetest_step2","full_test_practice_step2", "practice_score_step2", "practice_test_step2", "score_step2","target_score_step2")
+columns_to_summarize <- c("uworld_percent_step2", "amboss_percent_step2", "length_step2", "practicetest_step2","full_test_practice_step2", "practice_score_step2", "practice_test_step2", "resources_step2",  "score_step2","target_score_step2")
 
 to_add <- merge_my_columns(input_cols = columns_to_summarize, source_df = took_step2general)
 drop_these_with_no_outcome <- bind_cols(took_step2general, to_add) %>% filter(is.na(score_step2)) %>% select("record_id", "schoolid")
@@ -383,8 +390,10 @@ Note, we plan to use the robust/sandwich variance estimator for regression model
     step2_complete$simulate_full_practice <- factor(step2_complete$simulate_full_practice, levels = c(0, 1), labels = c("Yes", "No"))
     step2_complete$length_step2 <- factor(step2_complete$length_step2 , levels = c(1:6), labels = c("less than 1 week", "1-2 weeks", "3-4 weeks", "5-6 weeks", "7-8 weeks", "more than 8 weeks"))
 
-    mod_step2_scores <- glm(score_step2 ~ uworld_percent_step2 + amboss_percent_step2 + length_step2 + simulate_full_practice + practice_score_step2 + school_factor, data = step2_complete)
+    mod_step2_scores <- lm(score_step2 ~ uworld_percent_step2 + amboss_percent_step2 + length_step2 + simulate_full_practice + practice_score_step2 + school_factor, data = step2_complete)
     summary(mod_step2_scores)
+
+    vif(mod_step2_scores)
 
     # rms::robcov(mod_step2_scores) this is what I would use to get the robust se estimates but when I try to swtich the above model to ols from the rms package I have trouble getting it to run
 
@@ -453,12 +462,12 @@ Note, we plan to use the robust/sandwich variance estimator for regression model
 
     -   "push_nbme_practice_score_step1_1" yes
 
-    -    "push_uw_practice_score_step1_1" yes
+    -   "push_uw_practice_score_step1_1" yes
 
     ```{r}
     step1_complete$push_step1 <- ifelse(step1_complete$push_step1 == 2 | is.na(step1_complete$push_step1) ==TRUE, 2, 1) #recording the NA's to be "No" (they did not push back step 1)
     step1_complete$push_step1_label <- factor(step1_complete$push_step1, levels = c(1, 2), labels = c("Yes", "No")) #making a nice descriptive label
-    
+
     did_push_df <- step1_complete %>% filter(push_step1_label == "Yes")
     dat %>% filter(!is.na(push_remember_step1_1))
 
@@ -485,9 +494,55 @@ Note, we plan to use the robust/sandwich variance estimator for regression model
     -   summarize comments (other_resources, other_step, changes_step)
 
     ```{r}
-    ## facet wrap on the schools
+    ## do a plot for all schools (in total) as well as Vanderbilt in particular
     ## use a unified color scheme
 
+    ggplot(aes(x = score_step2), data= step2_complete) + geom_histogram() + theme_minimal() + xlab("Self Reported Step 2 Score") + ylab("Frequency") + labs(title = "Frequency of reported Step 2 Scores")
+
+
+    #more data cleaning first first step 2 for the resouces they selected that they used
+    resources_step2 <- colSums(took_step2general[20:35])
+    uworld <- resources_step2[1] + resources_step2[9]
+    first_aid <- resources_step2[2] + resources_step2[10]
+    anki <- resources_step2[3] + resources_step2[11]
+    sketchy <- resources_step2[4] +resources_step2[12]
+    amboss <- resources_step2[5] + resources_step2[13]
+    pathoma <- resources_step2[6] + resources_step2[14]
+    boards_and_beyond <- resources_step2[7] + resources_step2[15]
+    other <- resources_step2[8] + resources_step2[16]
+    totals <- c(uworld, first_aid, anki, sketchy, amboss, pathoma, boards_and_beyond, other)
+    
+    #same idea for step 1
+    resources_step1 <- colSums(took_step1general[26:41])
+    uworld1 <- resources_step1[1] + resources_step1[9]
+    first_aid1 <- resources_step1[2] + resources_step1[10]
+    anki1 <- resources_step1[3] + resources_step1[11]
+    sketchy1 <- resources_step1[4] +resources_step1[12]
+    amboss1 <- resources_step1[5] + resources_step1[13]
+    pathoma1 <- resources_step1[6] + resources_step1[14]
+    boards_and_beyond1 <- resources_step1[7] + resources_step1[15]
+    other1 <- resources_step1[8] + resources_step1[16]
+    totals1 <- c(uworld1, first_aid1, anki1, sketchy1, amboss1, pathoma1, boards_and_beyond1, other1)
+    
+    rdf <- data.frame(amount = c(totals, totals1), name = rep(names(totals), 2), step_exam = c(rep("Step 2", 8), rep("Step 1", 8) ))
+    
+    # http://www.sthda.com/english/wiki/ggplot2-barplots-quick-start-guide-r-software-and-data-visualization used this as a guide
+    
+    #what resources are most widely used? I want to sort this barplot in order of frequency but for some reason this wasn't working for me with reorder()
+    ggplot(data=rdf, aes(x=name, y=amount, fill = step_exam)) +
+  geom_bar(stat="identity", position=position_dodge())+
+  theme_minimal() + coord_flip() + scale_fill_brewer(palette="Blues")
+    
+    
+    
+    ## how long did the students study barplot
+    
+    
+    ## number of practice tests histogram (among the people who answered the question)
+    
+    
+    ## summarize comments (other_resources, other_step, changes_step)
+    
     ```
     :::
 
