@@ -138,6 +138,9 @@ took_step1_VU <-
     starts_with("final_uw_practice_score_step1"),
     starts_with("score_step1"),
     starts_with("resources_step1"),
+    starts_with("other_resources_step1"),
+    starts_with("other_step1"),
+    starts_with("changes_step1"),
     "uniqueID",
     "schoolid", 
     "exam_order"
@@ -158,7 +161,10 @@ took_step1_UVA <-
     starts_with("final_nbme_practice_score_step1"),
     starts_with("final_uw_practice_score_step1"),
     starts_with("score_step1"),
-    starts_with("resources_step1") ,
+    starts_with("resources_step1"),
+    starts_with("other_resources_step1"),
+    starts_with("other_step1"),
+    starts_with("changes_step1"),
     "uniqueID",
     "schoolid", 
     "exam_order"
@@ -180,6 +186,9 @@ took_step1_H <-
     starts_with("final_uw_practice_score_step1"),
     starts_with("score_step1"),
     starts_with("resources_step1"),
+    starts_with("other_resources_step1"),
+    starts_with("other_step1"),
+    starts_with("changes_step1"),
     "uniqueID",
     "schoolid", 
     "exam_order"
@@ -213,11 +222,11 @@ class(took_step1general$practicetest_step1_2) <- "integer"
 class(took_step1general$push_uw_practice_score_step1_2) <- "integer"
 class(took_step1general$push_uw_practice_score_step1_1) <- "integer"
 
-cols_step1 <- c("uworld_percent_step1", "amboss_percent_step1", "length_step1", "practicetest_step1","full_test_practice_step1", "push_step1", "push_practice_test_step1",  "push_nbme_practice_score_step1",  "push_uw_practice_score_step1" ,"final_nbme_practice_score_step1", "final_uw_practice_score_step1","resources_step1",  "score_step1")
+cols_step1 <- c("uworld_percent_step1", "amboss_percent_step1", "length_step1", "practicetest_step1","full_test_practice_step1", "push_step1", "push_practice_test_step1",  "push_nbme_practice_score_step1",  "push_uw_practice_score_step1" ,"final_nbme_practice_score_step1", "final_uw_practice_score_step1","resources_step1",  "score_step1", "other_resources_step1", "other_step1","changes_step1")
 
 to_add <- merge_my_columns(input_cols = cols_step1, source_df = took_step1general)
 #table(to_add$score_step1) ## all step 1 scores have an outcome so there is no one to drop/filter out
-step1_complete <- bind_cols(took_step1general, to_add) %>% select(record_id, uniqueID:score_step1)
+step1_complete <- bind_cols(took_step1general, to_add) %>% select(record_id, uniqueID:changes_step1)
 ```
 
 Data quality: there are ` r length(step1_complete$uniqueID)` unique individuals included in the step 1 data. Below is a table of their inclusion by school:
@@ -374,19 +383,11 @@ kable(percents_missing, caption = "Percent missing observations for pooled Step 
 #inspecting percent missing, it seems like most responses are now complete except Amboss. Based on our study plan, I will populate those without a response for Amboss with 0's
 step2_complete$amboss_percent_step2 <- ifelse(is.na(step2_complete$amboss_percent_step2) == TRUE, 0, step2_complete$amboss_percent_step2)
 class(step2_complete$practicetest_step2) <- "integer"
+
 step2_complete[,"on_target"] <-  factor(step2_complete$target_score_step2, levels = c(1,2,3), labels = c("at target", "above target", "below target"))
 
-
-# after disucssing with the group, we decided the pairs plots were not helpful to display.
-# ######## Making pairs plots to assess co linearity 
-# #this function is so I can customize the panels in the correlation pairs plots. 
-# tf = function(x,y) {
-#   ct <- cor.test(x, y)
-#   sprintf("Corr: %0.2f, p: %0.3f\n95%% CI: (%0.2f - %0.2f) \n n pairs = %.0f", 
-#           ct$estimate, ct$p.value, ct$conf.int[1], ct$conf.int[2], sum(!is.na(x), !is.na(y))/2)
-# }  #https://stackoverflow.com/questions/75068871/add-p-value-and-or-95-ci-in-the-text-of-a-correlation-matrix-pairs-plot
-# 
-# ggpairs(step2_complete[,c("uworld_percent_step2", "amboss_percent_step2", "length_step2", "practicetest_step2",  "full_test_practice_step2", "practice_score_step2", "practice_test_step2", "on_target", "score_step2")], title="Step 2 scores and predictors pairs plots", upper=list(continuous=wrap("statistic",text_fn=tf,title=NULL, sep=NULL)), progress = FALSE)
+step2_complete[, "practice_test_2_clean"] <- ifelse(is.na(step2_complete$practicetest_step2) == TRUE, NA, substr(step2_complete$practicetest_step2, start = 1, stop = 1))
+step2_complete[, "number_of_practice_tests"] <- as.numeric(step2_complete$practice_test_2_clean)
 ```
 
 Multiple linear regression with:
@@ -399,7 +400,7 @@ Multiple linear regression with:
   
   -   X3 = length study
   
-  -   X4 = \# of practice tests
+  -   X4 = # of practice tests
   
   -   X5 = full test day (yes/no code as binary)
   
@@ -407,12 +408,7 @@ Multiple linear regression with:
 
   -   Z = School (need to adjust for this)
 
-I decided to exclude the number of practice tests (covariate X4) since unique the responses were so few:
- ------------> ACTUALLY NEED TO INCLUDE AND DO DATA CLEANING ON X4!!!
-```{r}
-unique(step2_complete$practicetest_step2)
-table(step2_complete$practicetest_step2)
-```
+Careful to note that not all cases are complete - for example there are 399 responses in the complete step 2 dataset, of which for the number of practice tests taken, 108 are missing and 291 have a response recorded.
 
 Below I report the model results, sandqich variance, and VIF for step 2 scores model.
 ```{r}
@@ -420,47 +416,20 @@ step2_complete$simulate_full_practice <- ifelse(step2_complete$full_test_practic
 step2_complete$simulate_full_practice <- factor(step2_complete$simulate_full_practice, levels = c(0, 1), labels = c("Yes", "No"))
 step2_complete$length_step2 <- factor(step2_complete$length_step2 , levels = c(1:6), labels = c("less than 1 week", "1-2 weeks", "3-4 weeks", "5-6 weeks", "7-8 weeks", "more than 8 weeks"))
 
-mod_step2_scores <- lm(score_step2 ~ uworld_percent_step2 + amboss_percent_step2 + length_step2 + simulate_full_practice + practice_score_step2 + school_factor, data = step2_complete)
+mod_step2_scores <- lm(score_step2 ~ uworld_percent_step2 + amboss_percent_step2 + length_step2 + simulate_full_practice + practice_score_step2 + number_of_practice_tests + school_factor, data = step2_complete)
 summary(mod_step2_scores)
 sandwich(mod_step2_scores)
 vif(mod_step2_scores)
 
-# rms::robcov(mod_step2_scores) this is what I would use to get the robust se estimates but when I try to swtich the above model to ols from the rms package I have trouble getting it to run
-
-# modelsummary::modelsummary(list("Step 2 scores" = rms::robcov(mod_step2_scores)), 
-#              output = 'kableExtra',
-#              fmt = fmt_sprintf("%.4f"),
-#              estimate = "{estimate} [{conf.low}, {conf.high}]",
-#              statistic = "p: {p.value}")
+mod_step2_scores2 <- lm(score_step2 ~ uworld_percent_step2 + amboss_percent_step2 + length_step2 + simulate_full_practice + practice_score_step2 + practice_test_2_clean + school_factor, data = step2_complete)
+summary(mod_step2_scores2) #we need to talk about these model results
 ```
-
-::: callout-warning
-I need help with getting the robust estimator working in my model
-:::
 
 I looked into the difference between practice_test_step2 (the final practice test I took before my exam was... 8 options) and practicetest_step2 (text response of how many practice tests did you take before step 2). I decided not to include either in the model.
 
-Based on the model output, practice score is positively associated with final score with p = 0.001.
-
 ::: callout-note
-I did not perform lasso. would be happy to implement it if we can look it up.
+We need to talk about the model results between the two ways I coded the variables for # of practice tests
 :::
-
-Last time I made the pairs, plot I noticed there is a relationship between
-
--   "practice test" and "length"
-
--   "practice score" and "length"
-
--   "score" and "length" (this makes a lot of sense)
-
--   practice score and target score (also makes sense)
-
--   score and target
-
-    a trend (but not below p =0.05) the higher your practice score, the less time you study (makes intuitive sense)
-
--   uworld percent and target score
 
 ## Q3 What is associated (in this data) with pushing back a Step 1 exam date?
 
@@ -510,10 +479,9 @@ label(step1_complete$push_nbme_practice_score_step1) <- "NBME P(passing) that tr
 label(step1_complete$push_uw_practice_score_step1) <- "3 digit UWorld score that triggered pushing back"
 caption <- "Description of indiviuals that pushed back Step 1"
 table1(~ push_practice_test_step1 + push_uw_practice_score_step1 + push_nbme_practice_score_step1 |push_step1_label, data=step1_complete, topclass="Rtable1-zebra")
-
 ```
 
-## Descriptive Statistics (not done yet)
+## Descriptive Statistics (still in progress)
 
 Descriptive statistics will be reported by school and total.
 
@@ -566,12 +534,35 @@ ggplot(data=rdf, aes(x=name, y=amount, fill = step_exam)) +
 
 
 ## how long did the students study barplot
+       # for step 1
+step1_complete$length_step1 <- factor(step1_complete$length_step1 , levels = c(1:6), labels = c("less than 1 week", "1-2 weeks", "3-4 weeks", "5-6 weeks", "7-8 weeks", "more than 8 weeks"))
+
+ggplot(data.frame(step1_complete), aes(x=length_step1)) + geom_bar() + theme_minimal() + xlab("Time") + ylab("Frequency") + labs(title = "How long did you study for Step 1 during a protected study period?")
+
+       # for step 2
+
+ggplot(data.frame(step2_complete), aes(x=length_step2)) + geom_bar() + theme_minimal() + xlab("Time") + ylab("Frequency") + labs(title = "How long did you study for Step 2 during a protected study period?")
+
+
 
 
 ## number of practice tests histogram (among the people who answered the question)
+ggplot(aes(x = number_of_practice_tests), data= step2_complete) + geom_histogram() + theme_minimal() + xlab("Number of tests") + ylab("Frequency") + labs(title = "How many total practice tests did you take before Step 2?")
 
+ggplot(aes(x = practicetest_step1), data= step1_complete) + geom_histogram() + theme_minimal() + xlab("Number of tests") + ylab("Frequency") + labs(title = "How many total practice tests did you take before Step 1?")
 
 ## summarize comments (other_resources, other_step, changes_step)
+#"other_resources_step1"           "other_step1"                     "changes_step1"   
+kable(table(step1_complete$other_resources_step1), caption = "Other listed resources for Step 1")
+
+#If you used other resources not listed above, would you use them again?
+step1_complete$other_hascontents <- as.integer(nchar(step1_complete$other_resources_step1) > 0) #flagging the rows that have contents https://stackoverflow.com/questions/64744988/testing-to-see-if-characters-are-present-in-a-cell-in-r
+as_tibble(step1_complete[which(step1_complete$other_hascontents == 1), c("other_resources_step1", "other_step1") ])
+
+
+# what would you change?
+step1_complete$change_hascontents <- as.integer(nchar(step1_complete$changes_step1) > 0) 
+as_tibble(step1_complete[which(step1_complete$change_hascontents == 1), "changes_step1" ])
 #dat$study_amount_step1_1
 ```
 :::
