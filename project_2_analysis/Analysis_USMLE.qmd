@@ -442,61 +442,62 @@ step2_complete <- step2_complete %>% mutate(amboss_clean = ifelse(I.amboss == 0,
                                     uworld_clean = ifelse(I.uworld == 0, 0, 
                                     ifelse(is.na(step2_complete$uworld_percent_step2 ) == TRUE, NA, step2_complete$uworld_percent_step2)))
 
-######## profile missingness in the step 2 data and address
-percents_missing <- round(colSums(is.na(step2_complete))/nrow(step2_complete), 3)*100
-kable(percents_missing, caption = "Percent missing observations for pooled Step 2 survey")
-
 #inspecting percent missing, it seems like most responses are now complete enough for analysis
 step2_complete$amboss_percent_step2 <- ifelse(is.na(step2_complete$amboss_percent_step2) == TRUE, 0, step2_complete$amboss_percent_step2)
 class(step2_complete$practicetest_step2) <- "integer"
 
 step2_complete[,"on_target"] <-  factor(step2_complete$target_score_step2, levels = c(1,2,3), labels = c("at target", "above target", "below target"))
 
+
+# I looked into the difference between practice_test_step2 (the final practice test I took before my exam was... 8 options) and practicetest_step2 (text response of how many practice tests did you take before step 2).
+# I decided to use practicetest_step2 (text response of how many practice tests did you take before step 2) but extract and recode it as numeric below
 step2_complete[, "practice_test_2_clean"] <- ifelse(is.na(step2_complete$practicetest_step2) == TRUE, NA, substr(step2_complete$practicetest_step2, start = 1, stop = 1))
-step2_complete[, "number_of_practice_tests"] <- as.numeric(step2_complete$practice_test_2_clean)
+step2_complete[, "number_of_practice_tests"] <- as.numeric(step2_complete$practice_test_2_clean) #I want to include the number of practice tests as just one numeric covariate, not coded as a factor like it is in practice_test_2_clean
+
+step2_complete$full_practice_test <- factor(step2_complete$full_test_practice_step2 , levels = c(1:4), labels = c("Yes and I'm glad I did", "Yes and it was unnecessary", "No and I wish I did", "No and I'm glad I did not"))
+step2_complete$simulate_full_practice <- ifelse(step2_complete$full_test_practice_step2 <= 2, 1, 0)
+step2_complete$simulate_full_practice <- factor(step2_complete$simulate_full_practice, levels = c(0, 1), labels = c("No", "Yes"))
+step2_complete$length_step2 <- factor(step2_complete$length_step2 , levels = c(1:6), labels = c("less than 1 week", "1-2 weeks", "3-4 weeks", "5-6 weeks", "7-8 weeks", "more than 8 weeks"))
+
+
+######## profile missingness in the step 2 data and address
+step2_profile <- step2_complete %>% relocate(c(score_step2, uworld_clean, amboss_clean, length_step2, simulate_full_practice, practice_score_step2, number_of_practice_tests, school_factor), .before = schoolid)
+
+percents_missing <-round(colSums(is.na(step2_profile))/nrow(step2_profile), 3)*100
+kable(percents_missing, caption = "Percent missing observations for pooled Step 2 survey")
 ```
+
 
 Multiple linear regression with:
 
--   Y = Step 2 score
+-   Y = Step 2 score (from "What was your 3-digit score on the official Step 2 exam?")
 
--   X1 = % UWorld
+-   X1 = % UWorld (recoded from "Approximately what % of UWorld did you complete during your protected study period for step 2?")
 
--   X2 = % Amboss
+-   X2 = % Amboss (recoded from "Approximately what % of the Amboss question bank did you complete during your Step 2 protected study period?")
 
--   X3 = length study
+-   X3 = length study (factor from "How long did you study for Step 2 during a protected study period?")
 
--   X4 = \# of practice tests
+-   X4 = # of practice tests (recoded from a text answer from "How many total practice tests did you take before Step 2?")
 
--   X5 = full test day (yes/no code as binary)
+-   X5 = full test day (yes/no code as binary from "Did you simulate a full Step 2 test day experience, e.g. 8 blocks of 40 UWorld questions or 2 of the 4-section practice tests?")
 
--   X6 = final practice score (however, is there some conversion between U World and Amboss - Jeffrey is looking into this)
+-   X6 = final practice score (What was your 3 digit score on the final practice test you took before the Step 2 exam?)
 
--   Z = School (need to adjust for this)
+-   Z = School (need to adjust for this in order to remove any influence)
 
 Careful to note that not all cases are complete - for example there are 399 responses in the complete step 2 dataset, of which for the number of practice tests taken, 108 are missing and 291 have a response recorded.
 
-Below I report the model results, sandqich variance, and VIF for step 2 scores model.
+Below I report the model results, sandwich variance, and VIF for step 2 scores model. After that, I show descriptive statistics for predictors and the outcome that was included in the model.
 
 ```{r}
-step2_complete$simulate_full_practice <- ifelse(step2_complete$full_test_practice_step2 <= 2, 0, 1)
-step2_complete$simulate_full_practice <- factor(step2_complete$simulate_full_practice, levels = c(0, 1), labels = c("Yes", "No"))
-step2_complete$length_step2 <- factor(step2_complete$length_step2 , levels = c(1:6), labels = c("less than 1 week", "1-2 weeks", "3-4 weeks", "5-6 weeks", "7-8 weeks", "more than 8 weeks"))
-
-mod_step2_scores <- lm(score_step2 ~ uworld_percent_step2 + amboss_percent_step2 + length_step2 + simulate_full_practice + practice_score_step2 + number_of_practice_tests + school_factor, data = step2_complete)
+mod_step2_scores <- lm(score_step2 ~ uworld_clean + amboss_clean + length_step2 + simulate_full_practice + practice_score_step2 + number_of_practice_tests + school_factor, data = step2_complete) 
 summary(mod_step2_scores)
 sandwich(mod_step2_scores)
 vif(mod_step2_scores)
 
-mod_step2_scores2 <- lm(score_step2 ~ uworld_percent_step2 + amboss_percent_step2 + length_step2 + simulate_full_practice + practice_score_step2 + practice_test_2_clean + school_factor, data = step2_complete)
-summary(mod_step2_scores2) #we need to talk about these model results
+mod_step2_scores %>% tbl_regression() #this makes a cleaner looking summary table
 ```
-
-I looked into the difference between practice_test_step2 (the final practice test I took before my exam was... 8 options) and practicetest_step2 (text response of how many practice tests did you take before step 2). I decided not to include either in the model.
-
-::: callout-note
-We need to talk about the model results between the two ways I coded the variables for \# of practice tests
-:::
 
 ## Q3 What is associated (in this data) with pushing back a Step 1 exam date?
 
@@ -550,20 +551,39 @@ table1(~ push_practice_test_step1 + push_uw_practice_score_step1 + push_nbme_pra
 
 ## Descriptive Statistics (still in progress)
 
-Descriptive statistics will be reported by school and total.
+Descriptive statistics will be reported in total and not by school (as requested by the collaborators).
+
+-   Question banks
+      -   % UWorld for step 1 and 2
+      -   % Amboss for step 1 and 2
+
+-   length of study for step 1 and step 2 (barplot with frequency table)
+-   # of practice tests (recoded from a text answer from "How many total practice tests did you take before Step 2?")
+-   full test day as factor from "Did you simulate a full Step 2 test day experience, e.g. 8 blocks of 40 UWorld questions or 2 of the 4-section practice tests?" "full_practice_test"
 
 -   histogram of Step 2 scores
 -   what resources are most widely used barplot
--   how long did students study barplot
+
 -   number of practice tests histogram (among the people who answered the question)
--   summarize comments (other_resources, other_step, changes_step)
+-   summarize comments for other_resources, other_step, changes_step
+
+Practice Scores for Step 1 and Step 2
+-   probability of passing for step 1
+  -   final_nbme_practice_score_step1 is a percent from 0 to 100
+  -   final_uw_practice_score_step1 is a 3 digit UWorld score for step 1
+-   final practice score for step 2 (3 digit score)
+
+looking at the data dictionary, we are given final_nbme_practice _score_step1 and final_uw_practice_s core_step1 which are two different covariates which are ONLY in Step 1.
+
+Since everyone passed step 1, I did not run a regression model that included these covariates. Instead, I will make a plot to show this in descriptive data.
+
+These specific questions were not included for step 2, instead there is a question for practice_score_step2, which I do include in the model for step 2 score predictors above.
 
 ```{r}
 ## do a plot for all schools (in total) as well as Vanderbilt in particular
 ## use a unified color scheme
 
 ggplot(aes(x = score_step2), data= step2_complete) + geom_histogram() + theme_minimal() + xlab("Self Reported Step 2 Score") + ylab("Frequency") + labs(title = "Frequency of reported Step 2 Scores")
-
 
 #more data cleaning first first step 2 for the resouces they selected that they used
 resources_step2 <- colSums(took_step2general[20:35])
@@ -599,7 +619,6 @@ ggplot(data=rdf, aes(x=name, y=amount, fill = step_exam)) +
   theme_minimal() + coord_flip() + scale_fill_brewer(palette="Blues")
 
 
-
 ## how long did the students study barplot
        # for step 1
 step1_complete$length_step1 <- factor(step1_complete$length_step1 , levels = c(1:6), labels = c("less than 1 week", "1-2 weeks", "3-4 weeks", "5-6 weeks", "7-8 weeks", "more than 8 weeks"))
@@ -607,7 +626,6 @@ step1_complete$length_step1 <- factor(step1_complete$length_step1 , levels = c(1
 ggplot(data.frame(step1_complete), aes(x=length_step1)) + geom_bar() + theme_minimal() + xlab("Time") + ylab("Frequency") + labs(title = "How long did you study for Step 1 during a protected study period?")
 
        # for step 2
-
 ggplot(data.frame(step2_complete), aes(x=length_step2)) + geom_bar() + theme_minimal() + xlab("Time") + ylab("Frequency") + labs(title = "How long did you study for Step 2 during a protected study period?")
 
 
