@@ -51,6 +51,7 @@ library(gridExtra) #adding tables to plots
 library(visdat) #shows missing data
 library(GGally) #makes pairs plots
 library(sandwich) #for robust standard errors
+library(gtsummary) #makes the tables look nicer
 
 setwd("/Users/lisalevoir/BIOS7351_Collab/data_project2") #this line I would need to run in the console
 knitr::opts_knit$set(root.dir = "/Users/lisalevoir/BIOS7351_Collab/github/BIOS_Collaboration/project_2_analysis") #now I set global options for knitting, I also had to toggle global options > R Markdown > evaluate chunks in current directory
@@ -92,10 +93,21 @@ Based on our criteria we would exclude record IDs:
 #| message: false
 #| echo: false
 
+#creating a unique ID for each participant so I can easily summarize how many people have been included/excluded at each step
 dat <- dat %>% mutate(uniqueID = paste(school, record_id))
-VUMSdat <- dat %>% mutate(uniqueID = paste("VUSM", record_id))
-HMSdat <- dat %>% mutate(uniqueID = paste("HMS", record_id))
-UVAdat <- dat %>% mutate(uniqueID = paste("UVASOM", record_id))
+VUMSdat <- VUMSdat %>% mutate(uniqueID = paste("VUSM", record_id))
+HMSdat <- HMSdat %>% mutate(uniqueID = paste("HMS", record_id))
+UVAdat <- UVAdat %>% mutate(uniqueID = paste("UVASOM", record_id))
+
+## compare the individuals that were excluded by the collaborator (in dat) vs. the full dataset
+all_survey_ids <- c(VUMSdat$uniqueID, HMSdat$uniqueID, UVAdat$uniqueID)
+collaborator_survey_ids <- dat %>% select(uniqueID) %>% pull()
+```
+
+```{r}
+#| warning: false
+#| message: false
+#| echo: false
 
 #the list of IDs we decided as a group to exclude
 excludeVU <- c(23, 26, 39, 40, 54, 3, 8, 12, 49, 60, 62, 64)
@@ -109,7 +121,7 @@ UVA_in <- filter(UVAdat, record_id  %!in%  excludeUVA)
 
 #now I want to select the columns I'd like to include for all of my analysis (so they're in the proper order for a cbind). this will be relatively easy to come back to edit later, if needed. 
 
-#first, remember to include a school identifier
+# I am also including a school identifier as a common column before I rbind all 3 school data frames together
 VU_in[,"schoolid"] <- "VU" 
 UVA_in[,"schoolid"] <- "UVa"
 H_in[,"schoolid"] <- "HMS"
@@ -217,23 +229,30 @@ return(storage_df)
 }
 
 ######## combine results across exam order for Step 2
-class(took_step1general$practicetest_step1_1) <- "integer" #had to change class in order to coalesce these
+class(took_step1general$practicetest_step1_1) <- "integer" #had to change class in order to coalesce these. the original question was "How many total practice tests did you take before Step 1?" and the response field was text but it should just be integers. 
+## This will create a warning in the results that NAs are introduced by coercion but that is alright
 class(took_step1general$practicetest_step1_2) <- "integer" 
 class(took_step1general$push_uw_practice_score_step1_2) <- "integer"
 class(took_step1general$push_uw_practice_score_step1_1) <- "integer"
 
-cols_step1 <- c("uworld_percent_step1", "amboss_percent_step1", "length_step1", "practicetest_step1","full_test_practice_step1", "push_step1", "push_practice_test_step1",  "push_nbme_practice_score_step1",  "push_uw_practice_score_step1" ,"final_nbme_practice_score_step1", "final_uw_practice_score_step1","resources_step1",  "score_step1", "other_resources_step1", "other_step1","changes_step1")
+cols_step1 <- c("uworld_percent_step1", "amboss_percent_step1", "length_step1", "practicetest_step1","full_test_practice_step1", "push_step1", "push_practice_test_step1",  "push_nbme_practice_score_step1",  "push_uw_practice_score_step1" ,"final_nbme_practice_score_step1", "final_uw_practice_score_step1", "score_step1", "other_resources_step1", "other_step1","changes_step1")
+
+#now I need to handle the resources question, which was handled differently
+tookstep1_resources <- took_step1general %>% mutate(I.uworld = coalesce(resources_step1_1___1 + resources_step1_2___1), 
+                                                    I.firstaid = coalesce(resources_step1_1___2 + resources_step1_2___2),
+                                                    I.anki = coalesce(resources_step1_1___3 + resources_step1_2___3), 
+                                                    I.sketchy = coalesce(resources_step1_1___4 + resources_step1_2___4), 
+                                                    I.amboss= coalesce(resources_step1_1___5 + resources_step1_2___5), 
+                                                    I.pathoma = coalesce(resources_step1_1___6 + resources_step1_2___6),
+                                                    I.boardsbeyond = coalesce(resources_step1_1___7 + resources_step1_2___7),
+                                                    I.other = coalesce(resources_step1_1___8 + resources_step1_2___8)) %>% 
+                                                    select(I.uworld, I.firstaid, I.anki, I.sketchy, I.amboss, I.pathoma, I.boardsbeyond, I.other)
+
 
 to_add <- merge_my_columns(input_cols = cols_step1, source_df = took_step1general)
 #table(to_add$score_step1) ## all step 1 scores have an outcome so there is no one to drop/filter out
-step1_complete <- bind_cols(took_step1general, to_add) %>% select(record_id, uniqueID:changes_step1)
+step1_complete <- bind_cols(took_step1general, to_add, tookstep1_resources) %>% select(record_id, uniqueID:I.other)
 ```
-
-Data quality: there are ` r length(step1_complete$uniqueID)` unique individuals included in the step 1 data. Below is a table of their inclusion by school:
-```{r}
-kable(table(step1_complete$schoolid))
-```
-
 
 ```{r data_cleaning_forstep2}
 #| warning: false
@@ -298,23 +317,56 @@ took_step2general <- rbind(took_step2_H, took_step2_UVA, took_step2_VU)
 took_step2_first <- took_step2general %>% select(ends_with("_1"), "schoolid", "uniqueID") #don't plan on using these, but available if needed
 took_step2_second <- took_step2general %>% select(ends_with("_2"), "schoolid", "uniqueID")
 
+#now I need to handle the resources question, which was handled differently
+tookstep2_resources <- took_step2general %>% mutate(I.uworld = coalesce(resources_step2_1___1 + resources_step2_2___1), 
+                                                    I.firstaid = coalesce(resources_step2_1___2 + resources_step2_2___2),
+                                                    I.anki = coalesce(resources_step2_1___3 + resources_step2_2___3), 
+                                                    I.sketchy = coalesce(resources_step2_1___4 + resources_step2_2___4), 
+                                                    I.amboss= coalesce(resources_step2_1___5 + resources_step2_2___5), 
+                                                    I.pathoma = coalesce(resources_step2_1___6 + resources_step2_2___6),
+                                                    I.boardsbeyond = coalesce(resources_step2_1___7 + resources_step2_2___7),
+                                                    I.other = coalesce(resources_step2_1___8 + resources_step2_2___8)) %>% 
+                                                    select(I.uworld, I.firstaid, I.anki, I.sketchy, I.amboss, I.pathoma, I.boardsbeyond, I.other)
+
 ########combine results across exam order for Step 2
 class(took_step2general$practice_score_step2_2) <- "integer" #had to change class in order to coalesce these
 class(took_step2general$score_step2_1) <- "integer"
 class(took_step2general$score_step2_2) <- "integer"
 
-columns_to_summarize <- c("uworld_percent_step2", "amboss_percent_step2", "length_step2", "practicetest_step2","full_test_practice_step2", "practice_score_step2", "practice_test_step2", "resources_step2",  "score_step2","target_score_step2")
+columns_to_summarize <- c("uworld_percent_step2", "amboss_percent_step2", "length_step2", "practicetest_step2","full_test_practice_step2", "practice_score_step2", "practice_test_step2",  "score_step2","target_score_step2")
 
 to_add <- merge_my_columns(input_cols = columns_to_summarize, source_df = took_step2general)
 #listing the people with no outcome reported
 drop_these_with_no_outcome <- bind_cols(took_step2general, to_add) %>% filter(is.na(score_step2)) %>% select("record_id", "schoolid", "uniqueID")
 
 #dropping the people with no outcome
-intermediate_step2 <- bind_cols(took_step2general, to_add) %>% filter(!is.na(score_step2))
+intermediate_step2 <- bind_cols(took_step2general, to_add, tookstep2_resources) %>% filter(!is.na(score_step2))
 #creating the complete data set
-step2_complete <- intermediate_step2 %>% select(record_id, schoolid:target_score_step2)
+step2_complete <- intermediate_step2  %>%  select(record_id, schoolid:I.other)
 ```
-Notice that unfortunately, we had to drop `r nrow(drop_these_with_no_outcome) ` individuals who did not report a step 2 score. These raw counts and frequencies of people who did not give a step 2 score (and are therefor not eligible for analysis) are listed by institution below.
+
+There were `r length(intersect(all_survey_ids, collaborator_survey_ids))` participants after the the clients did data exclusion by hand, as compared to the total survey size which was `r length(step1_complete$uniqueID)` unique individuals included in the step 1 data.
+
+These are the record IDs that were excluded by the collaborator: `r setdiff(all_survey_ids, collaborator_survey_ids)`.
+
+For our analysis, I originally included everyone from the 3 school specific data sets. Then, we flagged individuals to remove and I remade the source data set. These are the records IDs that we decided to exclude:
+
+-   VU record ids: 23, 26, 39, 40, 54, 3, 8, 12, 49, 60, 62, 64
+
+-   HMS record ids: 1, 21, 28, 30, 34, 37, 39, 41, 44, 47, 49, 61
+
+-   UVA record ids: 33, 47, 80, 81, 83
+
+Below are tables for Step 1 and Step 2 response inclusion by school:
+
+```{r}
+kable(table(step1_complete$schoolid), caption = "Number of Step 1 responses included by school")
+
+kable(table(step2_complete$schoolid), caption = "Number of Step 2 responses included by school")
+```
+
+Notice that unfortunately for Step 2 analysis, we had to drop `r nrow(drop_these_with_no_outcome)` individuals who did not report a step 2 score. These raw counts and frequencies of people who did not give a step 2 score (and are therefor not eligible for analysis) are listed by institution below.
+
 ```{r}
 # describing the missingness
 kable(table(drop_these_with_no_outcome$schoolid), caption = "Number of missing Step 2 scores by institution")
@@ -322,7 +374,11 @@ num <- as.vector(table(drop_these_with_no_outcome$schoolid))
 denom <- as.vector(table(step2_complete$schoolid))
 nonresponse_freq <- setNames(c(round(num/denom, 3)), c(names(table(step2_complete$schoolid))))
 kable(nonresponse_freq, caption = "frequency of missing step 2 scores by instition")
+```
 
+We also find it helpful to visually profile the missingness in this graphic below. Some of this missingness is due to questions being hierarchical.
+
+```{r}
 ######### visually profile missing responses
 p1 <- visdat::vis_miss(step1_complete)
 p2 <- visdat::vis_miss(step2_complete)
@@ -340,47 +396,57 @@ Note, we plan to use the robust/sandwich variance estimator for regression model
 ::: panel-tabset
 ## Q1 Does order have an impact on Step 2 scores?
 
-We cannot analyze Step 1 since all survey responses reported passing
-For Step 2 scores, I will perform a linear regression with:
+We cannot analyze Step 1 since all survey responses reported passing For Step 2 scores, I will perform a linear regression with:
 
 -   Y = Step 2 score
 -   X = factor ( 1 = "step 1 first", 2 = "step 2 first", 3 = "only step 1", 4 = "only step 2")
 -   Z = school (need to adjust for this)
 
-::: callout-note
-still need to use robust se
-:::
-
-```{r}
+```{r exam_order_analysis}
 step2_complete[ ,"order_factor"]  <- factor(step2_complete$exam_order, levels = c(1,2, 3, 4), labels = c("step 1 first", "step 2 first", "only step 1", "only step 2"))
+
+step2_complete[ ,"which_exam_first"] <- ifelse(step2_complete$order_factor == "step 1 first" | step2_complete$order_factor == "only step 1", 1, 2)
+
 step2_complete[ ,"school_factor"]   <- factor(step2_complete$schoolid, labels = c("HMS", "UVA", "VUMS"))
 
-table(step2_complete$exam_order)
+table(step2_complete$order_factor)
+table(step2_complete$which_exam_first)
 
-exam_order_mod <- lm(formula = score_step2 ~ order_factor + school_factor, data = step2_complete)
+exam_order_mod <- lm(formula = score_step2 ~ which_exam_first + school_factor, data = step2_complete)
 sandwich(exam_order_mod) #this gives the sandwich variance
 summary(exam_order_mod) #model summary for reporting
 ```
 
-Based on the model output (p values), there doesn't appear to be any signifigant associations between exam order and the score for Step 2. Since the $R^2$ value is essentially 0, I conclude that there was no effect of exam order on step 2 scores. 
+Based on the model output (p values), there doesn't appear to be any signifigant associations between exam order and the score for Step 2. Since the $R^2$ value is essentially 0, I conclude that there was no effect of exam order on step 2 scores.
 
 ## Q2 What factors affect Step 2 score?
 
 Again, we cannot analyze Step 1 scores since all respondents reported passing.
 
-Based on our SAP, if there are any covariates with more than 30% of responses missing, we will drop that variable or populate it with 0, depending on context. For example, the percent of Amboss questions completed will be filled with 0 for people who didn't answer since it seems safe to assume they didn't complete any of the Amboss questions. If less than 30% are missing, I may consider performing bootstrap sampling of known values to replace missing values.
+Based on our SAP, if there are any covariates with more than 30% of responses missing, we will drop that variable or populate it with 0, depending on context. For example, the percent of Amboss questions completed will be filled with 0 for people who didn't answer that they used Amboss since it seems safe to assume they didn't complete any of the Amboss questions. For people who did select that they used Amboss but didn't answer a percentage will be treated as missing
+
+If less than 30% are missing, I may consider performing bootstrap sampling of known values to replace missing values.
 
 After accounting for missingness, I will assess for co-linearity of the predictors (ie. correlation) using VIF. If there is high co-linearity, we will use LASSO to perform variable selection. If there is no evidence of concerning levels of colinearity, I will proceed with linear regression.
 
-
 ```{r data_profile_and_pairs_plots}
 #| warning: false
+
+#here I am creating the cleaned Uworld and Amboss variables. if they did not check that they used it, the percentage is set to 0.
+# if they did use it then the next ifelse checks if there is an NA where there should be a percent
+# if there is an NA where there should be a percent, we maintain this NA. If there is not, then we can report the percentage.
+# same process for uworld
+step2_complete <- step2_complete %>% mutate(amboss_clean = ifelse(I.amboss == 0, 0, 
+                                    ifelse(is.na(step2_complete$amboss_percent_step2) == TRUE, NA, step2_complete$amboss_percent_step2)),
+                                    
+                                    uworld_clean = ifelse(I.uworld == 0, 0, 
+                                    ifelse(is.na(step2_complete$uworld_percent_step2 ) == TRUE, NA, step2_complete$uworld_percent_step2)))
 
 ######## profile missingness in the step 2 data and address
 percents_missing <- round(colSums(is.na(step2_complete))/nrow(step2_complete), 3)*100
 kable(percents_missing, caption = "Percent missing observations for pooled Step 2 survey")
 
-#inspecting percent missing, it seems like most responses are now complete except Amboss. Based on our study plan, I will populate those without a response for Amboss with 0's
+#inspecting percent missing, it seems like most responses are now complete enough for analysis
 step2_complete$amboss_percent_step2 <- ifelse(is.na(step2_complete$amboss_percent_step2) == TRUE, 0, step2_complete$amboss_percent_step2)
 class(step2_complete$practicetest_step2) <- "integer"
 
@@ -392,25 +458,26 @@ step2_complete[, "number_of_practice_tests"] <- as.numeric(step2_complete$practi
 
 Multiple linear regression with:
 
-  -   Y = Step 2 score
-  
-  -   X1 = % UWorld
-  
-  -   X2 = % Amboss
-  
-  -   X3 = length study
-  
-  -   X4 = # of practice tests
-  
-  -   X5 = full test day (yes/no code as binary)
-  
-  -   X6 = final practice score (however, is there some conversion between U World and Amboss - Jeffrey is looking into this)
+-   Y = Step 2 score
 
-  -   Z = School (need to adjust for this)
+-   X1 = % UWorld
+
+-   X2 = % Amboss
+
+-   X3 = length study
+
+-   X4 = \# of practice tests
+
+-   X5 = full test day (yes/no code as binary)
+
+-   X6 = final practice score (however, is there some conversion between U World and Amboss - Jeffrey is looking into this)
+
+-   Z = School (need to adjust for this)
 
 Careful to note that not all cases are complete - for example there are 399 responses in the complete step 2 dataset, of which for the number of practice tests taken, 108 are missing and 291 have a response recorded.
 
 Below I report the model results, sandqich variance, and VIF for step 2 scores model.
+
 ```{r}
 step2_complete$simulate_full_practice <- ifelse(step2_complete$full_test_practice_step2 <= 2, 0, 1)
 step2_complete$simulate_full_practice <- factor(step2_complete$simulate_full_practice, levels = c(0, 1), labels = c("Yes", "No"))
@@ -428,7 +495,7 @@ summary(mod_step2_scores2) #we need to talk about these model results
 I looked into the difference between practice_test_step2 (the final practice test I took before my exam was... 8 options) and practicetest_step2 (text response of how many practice tests did you take before step 2). I decided not to include either in the model.
 
 ::: callout-note
-We need to talk about the model results between the two ways I coded the variables for # of practice tests
+We need to talk about the model results between the two ways I coded the variables for \# of practice tests
 :::
 
 ## Q3 What is associated (in this data) with pushing back a Step 1 exam date?
