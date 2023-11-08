@@ -603,12 +603,14 @@ Descriptive statistics will be reported in total and not by school (as requested
 
 -   length of study for step 1 and step 2 (barplot with frequency table)
 -   # of practice tests (recoded from a text answer from "How many total practice tests did you take before Step 2?")
+
 -   full test day as factor from "Did you simulate a full Step 2 test day experience, e.g. 8 blocks of 40 UWorld questions or 2 of the 4-section practice tests?" "full_practice_test"
 
 -   histogram of Step 2 scores
+-   frequency table of Step 1 scores
 -   what resources are most widely used barplot
 
--   number of practice tests histogram (among the people who answered the question)
+-   number of practice tests histogram (among the people who answered the question) for step 1
 -   summarize comments for other_resources, other_step, changes_step
 
 Practice Scores for Step 1 and Step 2
@@ -623,12 +625,70 @@ Since everyone passed step 1, I did not run a regression model that included the
 
 These specific questions were not included for step 2, instead there is a question for practice_score_step2, which I do include in the model for step 2 score predictors above.
 
-```{r}
-## do a plot for all schools (in total) as well as Vanderbilt in particular
-## use a unified color scheme
 
+```{r}
+# Here is how I am planning to organize it:
+# 1   Question banks
+#       -   % UWorld for step 1 and 2
+#       -   % Amboss for step 1 and 2
+# 2   length of study for step 1 and step 2 (barplot with frequency table)
+# 3   # of practice tests (recoded from a text answer from "How many total practice tests did you take before Step 2?")
+# 4   number of practice tests histogram (among the people who answered the question) for step 1
+# 5   full test day as factor from "Did you simulate a full Step 2 test day experience, e.g. 8 blocks of 40 UWorld questions or 2 of the 4-section practice tests?" "full_practice_test"
+# 6   histogram of Step 2 scores
+# 7   frequency table of Step 1 scores
+# 8   what resources are most widely used barplot
+# 9   practice score step 2
+# 10   summarize comments for other_resources, other_step, changes_step
+# 11 Practice Scores for Step 1 and Step 2
+#  11a probability of passing for step 1
+#   11b  final_nbme_practice_score_step1 is a percent from 0 to 100
+#   11c   final_uw_practice_score_step1 is a 3 digit UWorld score for step 1
+# 11d   final practice score for step 2 (3 digit score)
+####  and these are covered in other plots already (as numbered)
+# 11b looking at the data dictionary, we are given final_nbme_practice _score_step1 and final_uw_practice_s core_step1 which are two different covariates which are ONLY in Step 1.
+# 7 Since everyone passed step 1, I did not run a regression model that included these covariates. Instead, I will make a plot to show this in descriptive data.
+# 9 These specific questions were not included for step 2, instead there is a question for practice_score_step2, which I do include in the model for step 2 score predictors above.
+
+############################ now see the plots below as organized by the list I made above
+# 1   Question banks
+#       -   % UWorld for step 1 and 2
+#       -   % Amboss for step 1 and 2
+
+
+
+
+
+# 2   length of study for step 1 and step 2 (barplot with frequency table)
+## how long did the students study barplot
+       # for step 1
+step1_complete$length_step1 <- factor(step1_complete$length_step1 , levels = c(1:6), labels = c("less than 1 week", "1-2 weeks", "3-4 weeks", "5-6 weeks", "7-8 weeks", "more than 8 weeks"))
+ggplot(data.frame(step1_complete), aes(x=length_step1)) + geom_bar() + theme_minimal() + xlab("Time") + ylab("Frequency") + labs(title = "How long did you study for Step 1 during a protected study period?")
+
+       # for step 2
+ggplot(data.frame(step2_complete), aes(x=length_step2)) + geom_bar() + theme_minimal() + xlab("Time") + ylab("Frequency") + labs(title = "How long did you study for Step 2 during a protected study period?")
+
+# 3   # of practice tests (recoded from a text answer from "How many total practice tests did you take before Step 2?")
+ggplot(aes(x = number_of_practice_tests), data= step2_complete) + geom_histogram() + theme_minimal() + xlab("Number of tests") + ylab("Frequency") + labs(title = "How many total practice tests did you take before Step 2?")
+
+# 4   number of practice tests histogram (among the people who answered the question) for step 1
+ggplot(aes(x = practicetest_step1), data= step1_complete) + geom_histogram() + theme_minimal() + xlab("Number of tests") + ylab("Frequency") + labs(title = "How many total practice tests did you take before Step 1?") ## number of practice tests histogram (among the people who answered the question)
+
+# 5   full test day as factor from "Did you simulate a full Step 2 test day experience, e.g. 8 blocks of 40 UWorld questions or 2 of the 4-section practice tests?" "full_practice_test"
+
+
+
+
+# 6   histogram of Step 2 scores
 ggplot(aes(x = score_step2), data= step2_complete) + geom_histogram() + theme_minimal() + xlab("Self Reported Step 2 Score") + ylab("Frequency") + labs(title = "Frequency of reported Step 2 Scores")
 
+# 7   frequency table of Step 1 scores
+
+
+
+
+
+# 8   what resources are most widely used barplot CAN REWRITE NOW THAT I HAVE CLEANER DATA, BUT THIS WAS WRITTEN BEFORE AND WORKS FOR NOW...
 #more data cleaning first first step 2 for the resouces they selected that they used
 resources_step2 <- colSums(took_step2general[20:35])
 uworld <- resources_step2[1] + resources_step2[9]
@@ -662,37 +722,37 @@ ggplot(data=rdf, aes(x=name, y=amount, fill = step_exam)) +
   geom_bar(stat="identity", position=position_dodge())+
   theme_minimal() + coord_flip() + scale_fill_brewer(palette="Blues")
 
-
-## how long did the students study barplot
-       # for step 1
-step1_complete$length_step1 <- factor(step1_complete$length_step1 , levels = c(1:6), labels = c("less than 1 week", "1-2 weeks", "3-4 weeks", "5-6 weeks", "7-8 weeks", "more than 8 weeks"))
-
-ggplot(data.frame(step1_complete), aes(x=length_step1)) + geom_bar() + theme_minimal() + xlab("Time") + ylab("Frequency") + labs(title = "How long did you study for Step 1 during a protected study period?")
-
-       # for step 2
-ggplot(data.frame(step2_complete), aes(x=length_step2)) + geom_bar() + theme_minimal() + xlab("Time") + ylab("Frequency") + labs(title = "How long did you study for Step 2 during a protected study period?")
+# 9   practice score step 2
 
 
 
 
-## number of practice tests histogram (among the people who answered the question)
-ggplot(aes(x = number_of_practice_tests), data= step2_complete) + geom_histogram() + theme_minimal() + xlab("Number of tests") + ylab("Frequency") + labs(title = "How many total practice tests did you take before Step 2?")
+# 10   summarize comments for other_resources, other_step, changes_step
+    ## summarize comments (other_resources, other_step, changes_step)
+    #"other_resources_step1"           "other_step1"                     "changes_step1"   
+    kable(table(step1_complete$other_resources_step1), caption = "Other listed resources for Step 1")
+    
+    #If you used other resources not listed above, would you use them again?
+    step1_complete$other_hascontents <- as.integer(nchar(step1_complete$other_resources_step1) > 0) #flagging the rows that have contents https://stackoverflow.com/questions/64744988/testing-to-see-if-characters-are-present-in-a-cell-in-r
+    as_tibble(step1_complete[which(step1_complete$other_hascontents == 1), c("other_resources_step1", "other_step1") ])
+    
+    
+    # what would you change?
+    step1_complete$change_hascontents <- as.integer(nchar(step1_complete$changes_step1) > 0) 
+    as_tibble(step1_complete[which(step1_complete$change_hascontents == 1), "changes_step1" ])
+    #dat$study_amount_step1_1
 
-ggplot(aes(x = practicetest_step1), data= step1_complete) + geom_histogram() + theme_minimal() + xlab("Number of tests") + ylab("Frequency") + labs(title = "How many total practice tests did you take before Step 1?")
+# 11 Practice Scores for Step 1 and Step 2
+#  11a probability of passing for step 1
+#   11b  final_nbme_practice_score_step1 is a percent from 0 to 100
+#   11c   final_uw_practice_score_step1 is a 3 digit UWorld score for step 1
+# 11d   final practice score for step 2 (3 digit score)
+    
+    
+    
+    
+    
 
-## summarize comments (other_resources, other_step, changes_step)
-#"other_resources_step1"           "other_step1"                     "changes_step1"   
-kable(table(step1_complete$other_resources_step1), caption = "Other listed resources for Step 1")
-
-#If you used other resources not listed above, would you use them again?
-step1_complete$other_hascontents <- as.integer(nchar(step1_complete$other_resources_step1) > 0) #flagging the rows that have contents https://stackoverflow.com/questions/64744988/testing-to-see-if-characters-are-present-in-a-cell-in-r
-as_tibble(step1_complete[which(step1_complete$other_hascontents == 1), c("other_resources_step1", "other_step1") ])
-
-
-# what would you change?
-step1_complete$change_hascontents <- as.integer(nchar(step1_complete$changes_step1) > 0) 
-as_tibble(step1_complete[which(step1_complete$change_hascontents == 1), "changes_step1" ])
-#dat$study_amount_step1_1
 ```
 :::
 
