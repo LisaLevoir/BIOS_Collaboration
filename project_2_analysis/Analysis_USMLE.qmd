@@ -499,6 +499,50 @@ vif(mod_step2_scores)
 mod_step2_scores %>% tbl_regression() #this makes a cleaner looking summary table
 ```
 
+Trying the model with imputation, but there is an issue right now with just imputing one value instead of randomly sampling...
+
+::: callout-note
+imputation needs to be fixed before interpreting this model! see the snippet of the updated data showing this issue
+:::
+
+```{r}
+#following this thought process for the variables that had missingness for the 2nd model
+# df %>% mutate(var = ifelse(!is.na(var),var, sample(var[!is.na(var)],1)))
+# as described on this blog https://community.rstudio.com/t/replacing-nas-with-random-values-from-a-set/158833/2 
+## model variables were uworld_clean + amboss_clean + length_step2 + simulate_full_practice + practice_score_step2 + number_of_practice_tests + school_factor
+# with missingness in uworld_clean, amboss_clean, length_step2, practice_score_step2, and number_of_practice_tests
+
+step2_impute <-
+  step2_complete %>% select(
+    score_step2,
+    uworld_clean,
+    amboss_clean,
+    length_step2,
+    simulate_full_practice,
+    practice_score_step2,
+    number_of_practice_tests,
+    school_factor
+  ) %>%     mutate(uworld = ifelse(!is.na(uworld_clean), uworld_clean, sample(uworld_clean[!is.na(uworld_clean)], 1)),
+                   amboss = ifelse(!is.na(amboss_clean), amboss_clean, sample(amboss_clean[!is.na(amboss_clean)], 1)),
+                   length = factor(ifelse(!is.na(length_step2), length_step2, sample(length_step2[!is.na(length_step2)], 1)), levels = c(1:6), labels = c("less than 1 week", "1-2 weeks", "3-4 weeks", "5-6 weeks", "7-8 weeks", "more than 8 weeks")),
+                   prac_score = ifelse(!is.na(practice_score_step2), practice_score_step2, sample(practice_score_step2[!is.na(practice_score_step2)], 1)),
+                   num_tests = ifelse(!is.na(number_of_practice_tests), number_of_practice_tests, sample(number_of_practice_tests[!is.na(number_of_practice_tests)], 1))  
+                   )
+
+colSums(is.na(step2_impute)) #to confirm the random sampling replacement worked
+#here is a view of one change:
+# cbind(step2_impute$length_step2, step2_impute$length)
+cbind(step2_impute$practice_score_step2, step2_impute$prac_score)[1:22,]
+
+mod_impute_step2_scores <- lm(score_step2 ~ uworld + amboss + length + simulate_full_practice + prac_score + num_tests + school_factor, data = step2_impute) 
+summary(mod_impute_step2_scores)
+sandwich(mod_impute_step2_scores)
+vif(mod_impute_step2_scores)
+
+mod_impute_step2_scores %>% tbl_regression() #this makes a cleaner looking summary table
+```
+
+
 ## Q3 What is associated (in this data) with pushing back a Step 1 exam date?
 
 Here, I will perform logistic regression with
