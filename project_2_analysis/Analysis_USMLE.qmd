@@ -10,8 +10,8 @@ format:
         html-math-method: katex
         toc: true
         toc-depth: 3
-        fig-width: 13
-        fig-height: 10
+        fig-width: 7
+        fig-height: 5
         toc-title: "Contents"
         number-sections: true
         self-contained: true
@@ -499,16 +499,9 @@ vif(mod_step2_scores)
 mod_step2_scores %>% tbl_regression() #this makes a cleaner looking summary table
 ```
 
-Trying the model with imputation, but there is an issue right now with just imputing one value instead of randomly sampling...
+Now showing the same the model with imputed missing values.
 
-::: callout-note
-imputation needs to be fixed before interpreting this model! see the snippet of the updated data showing this issue
-:::
-
-```{r}
-#following this thought process for the variables that had missingness for the 2nd model
-# df %>% mutate(var = ifelse(!is.na(var),var, sample(var[!is.na(var)],1)))
-# as described on this blog https://community.rstudio.com/t/replacing-nas-with-random-values-from-a-set/158833/2 
+```{r mod2_with_imputation}
 ## model variables were uworld_clean + amboss_clean + length_step2 + simulate_full_practice + practice_score_step2 + number_of_practice_tests + school_factor
 # with missingness in uworld_clean, amboss_clean, length_step2, practice_score_step2, and number_of_practice_tests
 
@@ -522,19 +515,24 @@ step2_impute <-
     practice_score_step2,
     number_of_practice_tests,
     school_factor
-  ) %>%     mutate(uworld = ifelse(!is.na(uworld_clean), uworld_clean, sample(uworld_clean[!is.na(uworld_clean)], 1)),
-                   amboss = ifelse(!is.na(amboss_clean), amboss_clean, sample(amboss_clean[!is.na(amboss_clean)], 1)),
-                   length = factor(ifelse(!is.na(length_step2), length_step2, sample(length_step2[!is.na(length_step2)], 1)), levels = c(1:6), labels = c("less than 1 week", "1-2 weeks", "3-4 weeks", "5-6 weeks", "7-8 weeks", "more than 8 weeks")),
-                   prac_score = ifelse(!is.na(practice_score_step2), practice_score_step2, sample(practice_score_step2[!is.na(practice_score_step2)], 1)),
-                   num_tests = ifelse(!is.na(number_of_practice_tests), number_of_practice_tests, sample(number_of_practice_tests[!is.na(number_of_practice_tests)], 1))  
-                   )
+  )
 
-colSums(is.na(step2_impute)) #to confirm the random sampling replacement worked
-#here is a view of one change:
-# cbind(step2_impute$length_step2, step2_impute$length)
-cbind(step2_impute$practice_score_step2, step2_impute$prac_score)[1:22,]
+#imputing missing values (replace the NA in columns using the old fashioned matrix operation dt$columns[is.na]= vector of number)
+step2_impute[which(is.na(step2_impute$uworld_clean) == TRUE), "uworld_clean"] <- sample(step2_impute$uworld_clean, size = sum(is.na(step2_impute$uworld_clean)))
+step2_impute[which(is.na(step2_impute$amboss_clean) == TRUE), "amboss_clean"] <- sample(step2_impute$amboss_clean, size = sum(is.na(step2_impute$amboss_clean)))
+step2_impute[which(is.na(step2_impute$length_step2) == TRUE), "length_step2"] <- sample(step2_impute$length_step2, size = sum(is.na(step2_impute$length_step2)))
+step2_impute[which(is.na(step2_impute$practice_score_step2) == TRUE), "practice_score_step2"] <- sample(step2_impute$practice_score_step2, size = sum(is.na(step2_impute$practice_score_step2)))
+step2_impute[which(is.na(step2_impute$number_of_practice_tests) == TRUE), "number_of_practice_tests"] <- sample(step2_impute$number_of_practice_tests, size = sum(is.na(step2_impute$number_of_practice_tests)))
 
-mod_impute_step2_scores <- lm(score_step2 ~ uworld + amboss + length + simulate_full_practice + prac_score + num_tests + school_factor, data = step2_impute) 
+
+#this is the number of missingness
+kable(colSums(is.na(step2_complete[,c("uworld_clean", "amboss_clean", "length_step2", "simulate_full_practice", "practice_score_step2", "number_of_practice_tests", "school_factor")])), caption = "Missingness before imputation")
+kable(colSums(is.na(step2_impute[,c("uworld_clean", "amboss_clean", "length_step2", "simulate_full_practice", "practice_score_step2", "number_of_practice_tests", "school_factor")])), caption = "Missingness after imputation") #to confirm the random sampling replacement worked
+
+# here is are two ways to confirm the change was as expected:
+# cbind(step2_impute$length_step2, step2_complete$length_step2)
+# cbind(step2_impute$practice_score_step2, step2_complete$practice_score_step2)
+mod_impute_step2_scores <- lm(score_step2 ~ uworld_clean + amboss_clean + length_step2 + simulate_full_practice + practice_score_step2 + number_of_practice_tests + school_factor, data = step2_impute) 
 summary(mod_impute_step2_scores)
 sandwich(mod_impute_step2_scores)
 vif(mod_impute_step2_scores)
@@ -594,38 +592,13 @@ caption <- "Description of indiviuals that pushed back Step 1"
 table1(~ push_practice_test_step1 + push_uw_practice_score_step1 + push_nbme_practice_score_step1 |push_step1_label, data=step1_complete, topclass="Rtable1-zebra")
 ```
 
-## Descriptive Statistics (now just needs to look uniform)
+## Descriptive Statistics
 
 Descriptive statistics will be reported in total and not by school (as requested by the collaborators).
 
--   Question banks
-      -   % UWorld for step 1 and 2
-      -   % Amboss for step 1 and 2
+Looking at the data dictionary, we are given final_nbme_practice _score_step1 and final_uw_practice_s core_step1 which are two different covariates which are ONLY in Step 1. These specific questions were not included for step 2, instead there is a question for practice_score_step2, which I included in the model for step 2 score predictors above and will make a plot in this section.
 
--   length of study for step 1 and step 2 (barplot with frequency table)
--   number of practice tests (recoded from a text answer from "How many total practice tests did you take before Step 2?")
-
--   full test day as factor from "Did you simulate a full Step 2 test day experience, e.g. 8 blocks of 40 UWorld questions or 2 of the 4-section practice tests?" "full_practice_test"
-
--   histogram of Step 2 scores
--   frequency table of Step 1 scores
--   what resources are most widely used barplot
-
--   number of practice tests histogram (among the people who answered the question) for step 1
--   summarize comments for other_resources, other_step, changes_step
-
-Practice Scores for Step 1 and Step 2
--   probability of passing for step 1
-  -   final_nbme_practice_score_step1 is a percent from 0 to 100
-  -   final_uw_practice_score_step1 is a 3 digit UWorld score for step 1
--   final practice score for step 2 (3 digit score)
-
-looking at the data dictionary, we are given final_nbme_practice _score_step1 and final_uw_practice_s core_step1 which are two different covariates which are ONLY in Step 1.
-
-Since everyone passed step 1, I did not run a regression model that included these covariates. Instead, I will make a plot to show this in descriptive data.
-
-These specific questions were not included for step 2, instead there is a question for practice_score_step2, which I do include in the model for step 2 score predictors above.
-
+Since everyone passed step 1, I did not run a regression model that included these covariates. Instead, I will make a frequency table.
 
 ```{r}
 # Here is how I am planning to organize it:
@@ -641,11 +614,11 @@ These specific questions were not included for step 2, instead there is a questi
 # 8   what resources are most widely used barplot
 # 9   practice score step 2
 # 10   summarize comments for other_resources, other_step, changes_step
-# 11 Practice Scores for Step 1 and Step 2
+# 11 Practice Scores for Step 1
 #  11a probability of passing for step 1
 #   11b  final_nbme_practice_score_step1 is a percent from 0 to 100
 #   11c   final_uw_practice_score_step1 is a 3 digit UWorld score for step 1
-# 11d   final practice score for step 2 (3 digit score)
+
 ####  and these are covered in other plots already (as numbered)
 # 11b looking at the data dictionary, we are given final_nbme_practice _score_step1 and final_uw_practice_s core_step1 which are two different covariates which are ONLY in Step 1.
 # 7 Since everyone passed step 1, I did not run a regression model that included these covariates. Instead, I will make a plot to show this in descriptive data.
@@ -666,81 +639,197 @@ qudf <- data.frame(amount = c(step1_complete$uworld_percent_step1,
                                     rep("Uworld", times = nrow(step2_complete)), 
                                     rep("Amboss", times = nrow(step2_complete))))
 
-ggplot(qudf, aes(amount)) + geom_histogram() + facet_wrap(~step_exam + resource_name) + theme_minimal() + scale_fill_brewer(palette="Blues")
+ggplot(qudf, aes(amount)) + geom_histogram() + 
+  facet_wrap(~step_exam + resource_name) + 
+  theme_minimal() + 
+  scale_color_brewer() + 
+  labs(title = "What percent of the UWorld/Amboss question bank did you complete?")
+```
 
+Length of study for each exam
+```{r}
 # 2   length of study for step 1 and step 2 (barplot with frequency table)
-## how long did the students study barplot
        # for step 1
-step1_complete$length_step1 <- factor(step1_complete$length_step1 , levels = c(1:6), labels = c("less than 1 week", "1-2 weeks", "3-4 weeks", "5-6 weeks", "7-8 weeks", "more than 8 weeks"))
-ggplot(data.frame(step1_complete), aes(x=length_step1)) + geom_bar() + theme_minimal() + xlab("Time") + ylab("Frequency") + labs(title = "How long did you study for Step 1 during a protected study period?")
+step1_complete$length_step1_lab <- factor(step1_complete$length_step1 , levels = c(1:6), labels = c("less than 1 week", "1-2 weeks", "3-4 weeks", "5-6 weeks", "7-8 weeks", "more than 8 weeks")) #make the factor labels which wasn't done before
+
+ggplot(data.frame(step1_complete), aes(x=factor(length_step1_lab))) + 
+  geom_bar() + 
+  theme_minimal() + 
+  geom_text(aes(label = ..count..), stat = "count", vjust = 1.5, colour = "white") +
+  xlab("Time") +
+  ylab("Frequency") + 
+  ggtitle("How long did you study for Step 1 during a protected study period?", subtitle=
+    paste(" answered = ",
+     sum(!is.na(step1_complete$length_step1)), 
+     " missing = ", 
+     sum(is.na(step1_complete$length_step1))))
+
 
        # for step 2
-ggplot(data.frame(step2_complete), aes(x=length_step2)) + geom_bar() + theme_minimal() + xlab("Time") + ylab("Frequency") + labs(title = "How long did you study for Step 2 during a protected study period?")
+ggplot(data.frame(step2_complete), aes(x=length_step2)) + 
+  geom_bar() + 
+  theme_minimal() + 
+  geom_text(aes(label = ..count..), stat = "count", vjust = 1.5, colour = "white") +
+  xlab("Time") +
+  ylab("Frequency") + 
+  ggtitle("How long did you study for Step 2 during a protected study period?", subtitle=
+    paste(" answered = ",
+     sum(!is.na(step2_complete$length_step2)), 
+     " missing = ", 
+     sum(is.na(step2_complete$length_step2))))
+```
 
+Step 2 # of practice tests
+```{r}
 # 3   # of practice tests (recoded from a text answer from "How many total practice tests did you take before Step 2?")
-ggplot(aes(x = number_of_practice_tests), data= step2_complete) + geom_histogram() + theme_minimal() + xlab("Number of tests") + ylab("Frequency") + labs(title = "How many total practice tests did you take before Step 2?")
+ggplot(aes(x = number_of_practice_tests), data= step2_complete) + 
+  geom_bar() + 
+  theme_minimal() +
+  xlab("Number of tests") + 
+  ylab("Frequency") + 
+  ggtitle("How many total practice tests did you take before Step 2?", subtitle=
+    paste(" answered = ",
+     sum(!is.na(step2_complete$number_of_practice_tests)), 
+     " missing = ", 
+     sum(is.na(step2_complete$number_of_practice_tests))))
 
+```
+
+Step 1 # of practice tests
+```{r}
 # 4   number of practice tests histogram (among the people who answered the question) for step 1
-ggplot(aes(x = practicetest_step1), data= step1_complete) + geom_histogram() + theme_minimal() + xlab("Number of tests") + ylab("Frequency") + labs(title = "How many total practice tests did you take before Step 1?") ## number of practice tests histogram (among the people who answered the question)
+ggplot(aes(x = practicetest_step1), data= step1_complete) + 
+  geom_bar() + 
+  scale_color_brewer(palette = "Paired") + 
+  theme_minimal() +
+  xlab("Number of tests") + 
+  ylab("Frequency") + 
+  ggtitle("How many total practice tests did you take before Step 1?", subtitle=
+    paste(" answered = ",
+     sum(!is.na(step1_complete$practicetest_step1)), 
+     " missing = ", 
+     sum(is.na(step1_complete$practicetest_step1))))
 
+## number of practice tests histogram (among the people who answered the question)
+```
+
+Simulating a full test day
+```{r}
 # 5   full test day as factor from "Did you simulate a full Step 2 test day experience, e.g. 8 blocks of 40 UWorld questions or 2 of the 4-section practice tests?" "full_practice_test"
-ggplot(aes(x = full_practice_test), data= step2_complete) + geom_bar() + theme_minimal() + xlab("Response") + ylab("Frequency") + labs(title = "Did you simulate a full Step 2 test day experience, \n e.g. 8 blocks of 40 UWorld questions or 2 of the 4-section practice tests?")
+ggplot(aes(x = full_practice_test), data= step2_complete) + 
+  coord_flip() +
+  scale_color_brewer(palette = "Greens") + 
+  geom_bar() + 
+  theme_minimal() +
+  xlab("") + 
+  ylab("Frequency") + 
+    ggtitle("Did you simulate a full Step 2 test day experience, e.g. 8 blocks \n of 40 UWorld questions or 2 of the 4-section practice tests?", subtitle=
+        paste(" answered = ",
+         sum(!is.na(step2_complete$full_practice_test)), 
+         " missing = ", 
+         sum(is.na(step2_complete$full_practice_test))))
+```
 
+Step 2 scores
+```{r}
 # 6   histogram of Step 2 scores
-ggplot(aes(x = score_step2), data= step2_complete) + geom_histogram() + theme_minimal() + xlab("Self Reported Step 2 Score") + ylab("Frequency") + labs(title = "Frequency of reported Step 2 Scores")
+ggplot(step2_complete, aes(x = score_step2)) +
+  geom_histogram(bins = 30) + 
+  theme_minimal() + 
+  scale_color_brewer(palette = "Greens") + 
+  xlab("Step 2 Score") + 
+  ylab("Count") + 
+  ggtitle("Frequency of reported Step 2 Scores", subtitle=
+        paste(" answered = ",
+         sum(!is.na(step2_complete$score_step2)), 
+         " missing = ", 
+         sum(is.na(step2_complete$score_step2)), 
+         "since this was an analysis inclusion condition"))
+```
 
+Step 1 scores
+```{r}
 # 7   frequency table of Step 1 scores
 kable(table(step1_complete$score_step1), caption = "Frequency of passing Step 1") # would be nice to have a way to summarize these in the same table, but this can just be remade with a table in Word
 kable(table(is.na(step1_complete$score_step1)), caption = "True indicates missing values for Step 1 score")
+```
 
+Resources use
+```{r}
 # 8   what resources are most widely used barplot 
 resources_2 <- step2_complete %>% select(I.uworld:I.other) %>% summarise(across(everything(), ~ sum(.)))
 resources_1 <- step1_complete %>% select(I.uworld:I.other) %>% summarise(across(everything(), ~ sum(.)))
 rdf <- data.frame(amount = c(t(resources_1), t(resources_2)), step_exam = c(rep("Step 1", 8), rep("Step 2", 8)), 
-                  resource_name = rep(names(resources_1), times = 2))
+                  resource_name = rep(c("Uworld", "First Aid", "Anki", "Sketchy", "Amboss", "Pathoma", "Boards and Beyond", "Other"), times = 2))
 # http://www.sthda.com/english/wiki/ggplot2-barplots-quick-start-guide-r-software-and-data-visualization used this as a guide
 #what resources are most widely used? I want to sort this barplot in order of frequency but for some reason this wasn't working for me with reorder()
-ggplot(data=rdf, aes(x=resource_name, y=amount, fill = step_exam)) +
-  geom_bar(stat="identity", position=position_dodge())+
-  theme_minimal() + coord_flip() + scale_fill_brewer(palette="Blues")
+ggplot(data=rdf, aes(x=resource_name, y=amount, fill = step_exam))  +
+  geom_bar(stat="identity", position=position_dodge()) + 
+  coord_flip() +
+  xlab("") + 
+  ylab("Count") +
+  scale_fill_brewer(palette="Paired", name = "") +
+  theme_minimal()  + ggtitle("Which resources are most widely used by Step 1/2?") 
 
-# 9   practice score step 2
-ggplot(aes(x = practice_score_step2), data= step2_complete) + geom_histogram() + scale_fill_brewer(palette="Blues") + theme_minimal() + xlab("Self Reported Step 2 Practice Score") + ylab("Frequency") + labs(title = "Reported Step 2 Practice Scores")
+# 9 practice score step 2 (3 digit score)
+ggplot(step2_complete, aes(x = practice_score_step2)) +
+  geom_histogram(bins = 30) + 
+  theme_minimal() + scale_color_brewer(palette = "Greens") + 
+  xlab("Final Step 2 Practice Score") + 
+  ylab("Count") + 
+  ggtitle("What was your 3 digit score on the final practice test \n you took before the Step 2 exam?", subtitle=paste(" answered = ", sum(!is.na(step2_complete$practice_score_step2)), " missing = ", sum(is.na(step2_complete$practice_score_step2))))
 
+```
+
+Summarizing comments for other_resources, other_step, changes_step
+```{r}
 # 10   summarize comments for other_resources, other_step, changes_step
     ## summarize comments (other_resources, other_step, changes_step)
     #"other_resources_step1"           "other_step1"                     "changes_step1"   
     kable(table(step1_complete$other_resources_step1), caption = "Other listed resources for Step 1")
     
-    #If you used other resources not listed above, would you use them again?
-    step1_complete$other_hascontents <- as.integer(nchar(step1_complete$other_resources_step1) > 0) #flagging the rows that have contents https://stackoverflow.com/questions/64744988/testing-to-see-if-characters-are-present-in-a-cell-in-r
-    as_tibble(step1_complete[which(step1_complete$other_hascontents == 1), c("other_resources_step1", "other_step1") ])
-    
-    # what would you change?
-    step1_complete$change_hascontents <- as.integer(nchar(step1_complete$changes_step1) > 0) 
-    as.data.frame(step1_complete[which(step1_complete$change_hascontents == 1), "changes_step1" ])
-    #dat$study_amount_step1_1
-
+#If you used other resources not listed above, would you use them again?
+step1_complete$other_hascontents <- as.integer(nchar(step1_complete$other_resources_step1) > 0) #flagging the rows that have contents https://stackoverflow.com/questions/64744988/testing-to-see-if-characters-are-present-in-a-cell-in-r
+mystring1 <- step1_complete %>% filter(other_hascontents == TRUE) %>% select(other_resources_step1, other_step1) 
+kable(mystring1, caption = "Other resources and if you'd used them again")
+```
+What would you change?
+```{r}
+step1_complete$change_hascontents <- as.integer(nchar(step1_complete$changes_step1) > 0) 
+#as.data.frame(step1_complete[which(step1_complete$change_hascontents == 1), "changes_step1" ])
+mystring2 <- step1_complete %>% filter(change_hascontents == TRUE) %>% select(changes_step1) %>% toString() 
+cat(str_wrap(mystring2), "\n") #used this package to help it print nicer https://stringr.tidyverse.org/reference/str_wrap.html
+```
+Practice Scores for Step 1 and Step 2
+```{r}
 # 11 Practice Scores for Step 1 and Step 2
 #   11a  final_nbme_practice_score_step1 is a percent from 0 to 100
+ggplot(step1_complete, aes(x = final_nbme_practice_score_step1)) +
+  geom_histogram(bins = 30) + 
+  theme_minimal() + scale_color_brewer(palette = "Greens") + 
+  xlab("Final Step 1 Probability of Passing") + 
+  ylab("Count") + 
+  ggtitle("What was the probability of passing you received \n on your final NBME form before the Step 1 exam?", subtitle=paste(" answered = ", sum(!is.na(step1_complete$final_nbme_practice_score_step1)), " missing = ", sum(is.na(step1_complete$final_nbme_practice_score_step1))))
+
 #   11b  final_uw_practice_score_step1 is a 3 digit UWorld score for step 1
-# 11c   final practice score for step 2 (3 digit score)
-    
-hist(step1_complete$final_nbme_practice_score_step1, main = "What was the probability of passing you received \n on your final NBME form before the Step 1 exam?", breaks = 40)
-kable(table(!is.na(step1_complete$final_nbme_practice_score_step1)), caption = "More responses are missing for P(passing step 1) from NBME") #so 118 are missing and 64 are there
+ggplot(step1_complete, aes(x = final_uw_practice_score_step1)) +
+  geom_histogram(bins = 30) + 
+  theme_minimal() + scale_color_brewer(palette = "Greens") + 
+  xlab("Final Step 1 UWorld Score") + 
+  ylab("Count") + 
+  ggtitle("What was the 3 digit score you received on your final \n UWorld form before the Step 1 exam?", subtitle=paste(" answered = ", sum(!is.na(step1_complete$final_uw_practice_score_step1)), " missing = ", sum(is.na(step1_complete$final_uw_practice_score_step1))))
 
-hist(step1_complete$final_uw_practice_score_step1, main = "What was the 3 digit score you received on your final UWorld form before the Step 1 exam?", breaks = 40)
-kable(table(is.na(step1_complete$final_uw_practice_score_step1)), caption = "Most responses are missing for UWorld Step 1 final score")
-
-hist(step2_complete$practice_score_step2, main = "What was your 3 digit score on the final practice test \n you took before the Step 2 exam?", breaks = 40)
-kable(table(is.na(step2_complete$practice_score_step2)), caption = "there are 41 missing final step2 practice scores")
 ```
 
 # Appendix/notes
 All the analyses are performed using the following:
 -   R version 4.2.2 (2022-06-24); R Core Team (2022). R: A language and environment for statistical computing. R Foundation for Statistical Computing, Vienna, Austria. URL https://www.R-project.org/.
+
+
 -   Harrell Jr FE (2022). rms: Regression Modeling Strategies. R package version 6.3-0, <https://CRAN.R-project.org/package=rms>.
+
 The table below lists packages used in this document.
+
 ```{r}
 subset(data.frame(sessioninfo::package_info()), attached==TRUE, c(package, loadedversion))
 ```
