@@ -478,7 +478,7 @@ Multiple linear regression with:
 
 -   X3 = length study (factor from "How long did you study for Step 2 during a protected study period?")
 
--   X4 = # of practice tests (recoded from a text answer from "How many total practice tests did you take before Step 2?")
+-   X4 = number of practice tests (recoded from a text answer from "How many total practice tests did you take before Step 2?")
 
 -   X5 = full test day (yes/no code as binary from "Did you simulate a full Step 2 test day experience, e.g. 8 blocks of 40 UWorld questions or 2 of the 4-section practice tests?")
 
@@ -579,11 +579,12 @@ Listing variables by name and if I have included them:
 step1_complete$push_step1 <- ifelse(step1_complete$push_step1 == 2 | is.na(step1_complete$push_step1) ==TRUE, 2, 1) #recording the NA's to be "No" (they did not push back step 1)
 step1_complete$push_step1_label <- factor(step1_complete$push_step1, levels = c(1, 2), labels = c("Yes", "No")) #making a nice descriptive label
 
-did_push_df <- step1_complete %>% filter(push_step1_label == "Yes")
-dat %>% filter(!is.na(push_remember_step1_1))
+#did_push_df <- step1_complete %>% filter(push_step1_label == "Yes")
+#dat %>% filter(!is.na(push_remember_step1_1))
 
 step1_complete$push_practice_test_step1 <- factor(step1_complete$push_practice_test_step1, levels = c(1:8), labels = c("NBME 25", "NBME 26", "NBME 27", "NBME 28", "NBME 29", "NBME 30", "UWorld 1", "UWorld 2"))
 
+#making labels for descriptive table
 units(step1_complete$push_uw_practice_score_step1) <- "score units"
 units(step1_complete$push_nbme_practice_score_step1) <- "percent"
 label(step1_complete$push_practice_test_step1) <- "exam that triggered pushing back"
@@ -593,7 +594,7 @@ caption <- "Description of indiviuals that pushed back Step 1"
 table1(~ push_practice_test_step1 + push_uw_practice_score_step1 + push_nbme_practice_score_step1 |push_step1_label, data=step1_complete, topclass="Rtable1-zebra")
 ```
 
-## Descriptive Statistics (still in progress)
+## Descriptive Statistics (now just needs to look uniform)
 
 Descriptive statistics will be reported in total and not by school (as requested by the collaborators).
 
@@ -602,7 +603,7 @@ Descriptive statistics will be reported in total and not by school (as requested
       -   % Amboss for step 1 and 2
 
 -   length of study for step 1 and step 2 (barplot with frequency table)
--   # of practice tests (recoded from a text answer from "How many total practice tests did you take before Step 2?")
+-   number of practice tests (recoded from a text answer from "How many total practice tests did you take before Step 2?")
 
 -   full test day as factor from "Did you simulate a full Step 2 test day experience, e.g. 8 blocks of 40 UWorld questions or 2 of the 4-section practice tests?" "full_practice_test"
 
@@ -717,7 +718,7 @@ ggplot(aes(x = practice_score_step2), data= step2_complete) + geom_histogram() +
     
     # what would you change?
     step1_complete$change_hascontents <- as.integer(nchar(step1_complete$changes_step1) > 0) 
-    as_tibble(step1_complete[which(step1_complete$change_hascontents == 1), "changes_step1" ])
+    as.data.frame(step1_complete[which(step1_complete$change_hascontents == 1), "changes_step1" ])
     #dat$study_amount_step1_1
 
 # 11 Practice Scores for Step 1 and Step 2
@@ -728,11 +729,22 @@ ggplot(aes(x = practice_score_step2), data= step2_complete) + geom_histogram() +
 hist(step1_complete$final_nbme_practice_score_step1, main = "What was the probability of passing you received \n on your final NBME form before the Step 1 exam?", breaks = 40)
 kable(table(!is.na(step1_complete$final_nbme_practice_score_step1)), caption = "More responses are missing for P(passing step 1) from NBME") #so 118 are missing and 64 are there
 
-
 hist(step1_complete$final_uw_practice_score_step1, main = "What was the 3 digit score you received on your final UWorld form before the Step 1 exam?", breaks = 40)
 kable(table(is.na(step1_complete$final_uw_practice_score_step1)), caption = "Most responses are missing for UWorld Step 1 final score")
 
+hist(step2_complete$practice_score_step2, main = "What was your 3 digit score on the final practice test \n you took before the Step 2 exam?", breaks = 40)
+kable(table(is.na(step2_complete$practice_score_step2)), caption = "there are 41 missing final step2 practice scores")
+```
 
-hist(step2_complete$practice_score_step2, main = "What was your 3 digit score on the final practice test you took before the Step 2 exam?", breaks = 40)
-kable(table(is.na(step2_complete$practice_score_step2)), caption = "")
+# Appendix/notes
+All the analyses are performed using the following:
+-   R version 4.2.2 (2022-06-24); R Core Team (2022). R: A language and environment for statistical computing. R Foundation for Statistical Computing, Vienna, Austria. URL https://www.R-project.org/.
+-   Harrell Jr FE (2022). rms: Regression Modeling Strategies. R package version 6.3-0, <https://CRAN.R-project.org/package=rms>.
+The table below lists packages used in this document.
+```{r}
+subset(data.frame(sessioninfo::package_info()), attached==TRUE, c(package, loadedversion))
+```
+
+
+
 
