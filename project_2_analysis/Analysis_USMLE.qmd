@@ -80,13 +80,6 @@ Criteria to exclude students who most likely took a scored exam:
 
 -   Students who specifically stated they took a scored Step 1 (n=1)
 
-Based on our criteria we would exclude record IDs:
-
--   VUSM: 23, 26, 39, 40, 54, 3, 8, 12, 49, 60, 62, 64
-
--   HMS: 1, 21, 28, 30, 34, 37, 39, 41, 44, 47, 49, 61
-
--   UVA: 33, 47, 80, 81, 83
 
 ```{r data_cleaning}
 #| warning: false
@@ -394,7 +387,9 @@ plot_grid(title_gg, gridded, nrow = 2, rel_heights = c(0.1, 0.9))
 Note, we plan to use the robust/sandwich variance estimator for regression models. One inclusion criteria is that the outcome variable ("Y") must be available for a subject to be included in the analysis question (ie. if they did not report a step 2 score, we won't perform relevant step 2 analysis on them).
 
 ::: panel-tabset
-## Q1 Does order have an impact on Step 2 scores?
+
+
+## Q1 Does order have an impact on Step 2 scores? (ready to report)
 
 We cannot analyze Step 1 since all survey responses reported passing For Step 2 scores, I will perform a linear regression with:
 
@@ -422,7 +417,7 @@ summary(exam_order_mod) %>% tbl_regression()  #model summary for reporting
 
 Based on the model output (p values), there doesn't appear to be any signifigant associations between exam order and the score for Step 2. Since the $R^2$ value is essentially 0, I conclude that there was no effect of exam order on step 2 scores.
 
-## Q2 What factors affect Step 2 score?
+## Q2 What factors affect Step 2 score? (do not report this yet until we decide)
 
 Again, we cannot analyze Step 1 scores since all respondents reported passing.
 
@@ -538,8 +533,15 @@ step2_impute[which(is.na(step2_impute$number_of_practice_tests) == TRUE), "numbe
 
 #this is the number of missingness
 kable(colSums(is.na(step2_complete[,c("uworld_clean", "amboss_clean", "length_step2", "simulate_full_practice", "practice_score_step2", "number_of_practice_tests", "school_factor")])), caption = "Missingness before imputation")
-kable(colSums(is.na(step2_impute[,c("uworld_clean", "amboss_clean", "length_step2", "simulate_full_practice", "practice_score_step2", "number_of_practice_tests", "school_factor")])), caption = "Missingness after imputation") #to confirm the random sampling replacement worked
+```
+Missingness after imputation to confirm the random sampling replacement worked
+```{r}
+colSums(is.na(step2_impute))
 
+
+      #[,c("uworld_clean", "amboss_clean", "length_step2", "simulate_full_practice", "practice_score_step2", "number_of_practice_tests", "school_factor")])
+      
+      
 # here is are two ways to confirm the change was as expected:
 # cbind(step2_impute$length_step2, step2_complete$length_step2)
 # cbind(step2_impute$practice_score_step2, step2_complete$practice_score_step2)
@@ -559,10 +561,9 @@ mod_impute_step2_scores %>% tbl_regression() #this makes a cleaner looking summa
 
 #library(glmnet)
 ```
-sig: 
 
 
-## Q3 What is associated (in this data) with pushing back a Step 1 exam date?
+## Q3 What is associated (in this data) with pushing back a Step 1 exam date? (ready to report)
 
 Here, I will perform logistic regression with
 
@@ -613,7 +614,7 @@ caption <- "Description of indiviuals that pushed back Step 1"
 table1(~ push_practice_test_step1 + push_uw_practice_score_step1 + push_nbme_practice_score_step1 |push_step1_label, data=step1_complete, topclass="Rtable1-zebra")
 ```
 
-## Descriptive Statistics
+## Descriptive Statistics (ready to report)
 
 Descriptive statistics will be reported in total and not by school (as requested by the collaborators).
 
@@ -858,6 +859,8 @@ ggplot(step1_complete, aes(x = final_uw_practice_score_step1)) +
   ggtitle("What was the 3 digit score you received on your final \n UWorld form before the Step 1 exam?", subtitle=paste(" answered = ", sum(!is.na(step1_complete$final_uw_practice_score_step1)), " missing = ", sum(is.na(step1_complete$final_uw_practice_score_step1))))
 
 ```
+
+::: 
 
 # Appendix/notes
 All the analyses are performed using the following:
