@@ -415,7 +415,7 @@ summary(exam_order_mod) %>% tbl_regression()  #model summary for reporting
 
 Based on the model output (p values), there doesn't appear to be any signifigant associations between exam order and the score for Step 2. Since the $R^2$ value is essentially 0, I conclude that there was no effect of exam order on step 2 scores.
 
-## Q2 What factors affect Step 2 score? (report the final LASSO model)
+## Q2 background information for analysis process of "What factors affect Step 2 score?"
 
 Again, we cannot analyze Step 1 scores since all respondents reported passing.
 
