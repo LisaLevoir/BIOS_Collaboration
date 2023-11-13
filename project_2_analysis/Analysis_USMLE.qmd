@@ -52,10 +52,11 @@ library(visdat) #shows missing data
 library(GGally) #makes pairs plots
 library(sandwich) #for robust standard errors
 library(gtsummary) #makes the tables look nicer
+library(glmnet) #for running LASSO
 
+#if you want to rerun this in your code, change the directory to where you have saved the data locally (do not upload data to github)
 setwd("/Users/lisalevoir/BIOS7351_Collab/data_project2") #this line I would need to run in the console
 knitr::opts_knit$set(root.dir = "/Users/lisalevoir/BIOS7351_Collab/github/BIOS_Collaboration/project_2_analysis") #now I set global options for knitting, I also had to toggle global options > R Markdown > evaluate chunks in current directory
-
 
 #import the data
 dat <- read.csv("/Users/lisalevoir/BIOS7351_Collab/data_project2/combined_data_203.csv")
@@ -79,7 +80,6 @@ Criteria to exclude students who most likely took a scored exam:
 -   Students who did not complete either Step survey (n = 2)
 
 -   Students who specifically stated they took a scored Step 1 (n=1)
-
 
 ```{r data_cleaning}
 #| warning: false
@@ -387,8 +387,6 @@ plot_grid(title_gg, gridded, nrow = 2, rel_heights = c(0.1, 0.9))
 Note, we plan to use the robust/sandwich variance estimator for regression models. One inclusion criteria is that the outcome variable ("Y") must be available for a subject to be included in the analysis question (ie. if they did not report a step 2 score, we won't perform relevant step 2 analysis on them).
 
 ::: panel-tabset
-
-
 ## Q1 Does order have an impact on Step 2 scores? (ready to report)
 
 We cannot analyze Step 1 since all survey responses reported passing For Step 2 scores, I will perform a linear regression with:
@@ -465,7 +463,6 @@ percents_missing <-round(colSums(is.na(step2_profile))/nrow(step2_profile), 3)*1
 kable(percents_missing, caption = "Percent missing observations for pooled Step 2 survey")
 ```
 
-
 Multiple linear regression with:
 
 -   Y = Step 2 score (from "What was your 3-digit score on the official Step 2 exam?")
@@ -497,13 +494,12 @@ sqrt(diag(sandwich(mod_step2_scores))) #this gives the sandwich variance now set
 p_interim <-pt(abs(mod_step2_scores$coefficients)/sqrt(diag(sandwich(mod_step2_scores))) , df = 72) 
 1 - p_interim #here are the p values with using the robust se
 
-
 vif(mod_step2_scores)
 
 mod_step2_scores %>% tbl_regression() #this makes a cleaner looking summary table
 ```
-now the significant coefficients are more numerous in the complete case analysis above
 
+now the significant coefficients are more numerous in the complete case analysis above
 
 Now showing the same the model with imputed missing values.
 
@@ -523,43 +519,69 @@ step2_impute <-
     school_factor
   )
 
-#imputing missing values (replace the NA in columns using the old fashioned matrix operation dt$columns[is.na]= vector of number)
-step2_impute[which(is.na(step2_impute$uworld_clean) == TRUE), "uworld_clean"] <- sample(step2_impute$uworld_clean, size = sum(is.na(step2_impute$uworld_clean)))
-step2_impute[which(is.na(step2_impute$amboss_clean) == TRUE), "amboss_clean"] <- sample(step2_impute$amboss_clean, size = sum(is.na(step2_impute$amboss_clean)))
-step2_impute[which(is.na(step2_impute$length_step2) == TRUE), "length_step2"] <- sample(step2_impute$length_step2, size = sum(is.na(step2_impute$length_step2)))
-step2_impute[which(is.na(step2_impute$practice_score_step2) == TRUE), "practice_score_step2"] <- sample(step2_impute$practice_score_step2, size = sum(is.na(step2_impute$practice_score_step2)))
-step2_impute[which(is.na(step2_impute$number_of_practice_tests) == TRUE), "number_of_practice_tests"] <- sample(step2_impute$number_of_practice_tests, size = sum(is.na(step2_impute$number_of_practice_tests)))
+# #imputing missing values (replace the NA in columns using the old fashioned matrix operation dt$columns[is.na]= vector of number)
+# step2_impute[which(is.na(step2_impute$uworld_clean) == TRUE), "uworld_clean"] <- sample(step2_impute$uworld_clean, size = sum(is.na(step2_impute$uworld_clean)))
+# step2_impute[which(is.na(step2_impute$amboss_clean) == TRUE), "amboss_clean"] <- sample(step2_impute$amboss_clean, size = sum(is.na(step2_impute$amboss_clean)))
+# step2_impute[which(is.na(step2_impute$length_step2) == TRUE), "length_step2"] <- sample(step2_impute$length_step2, size = sum(is.na(step2_impute$length_step2)))
+# step2_impute[which(is.na(step2_impute$practice_score_step2) == TRUE), "practice_score_step2"] <- sample(step2_impute$practice_score_step2, size = sum(is.na(step2_impute$practice_score_step2)))
+# step2_impute[which(is.na(step2_impute$number_of_practice_tests) == TRUE), "number_of_practice_tests"] <- sample(step2_impute$number_of_practice_tests, size = sum(is.na(step2_impute$number_of_practice_tests)))
 
+step2_impute = mice::mice(step2_impute,m=1,method='sample') %>% complete #better way to impute according to Jeffrey
 
 #this is the number of missingness
 kable(colSums(is.na(step2_complete[,c("uworld_clean", "amboss_clean", "length_step2", "simulate_full_practice", "practice_score_step2", "number_of_practice_tests", "school_factor")])), caption = "Missingness before imputation")
 ```
+
 Missingness after imputation to confirm the random sampling replacement worked
-```{r}
-colSums(is.na(step2_impute))
 
-
-      #[,c("uworld_clean", "amboss_clean", "length_step2", "simulate_full_practice", "practice_score_step2", "number_of_practice_tests", "school_factor")])
+```{r outdated_model2_with_imputation}
+colSums(is.na(step2_impute)) #missingness after imputation - should all be 0's
       
-      
-# here is are two ways to confirm the change was as expected:
+# here is are two ways to confirm the change was as expected (uncomment to see them in your console):
 # cbind(step2_impute$length_step2, step2_complete$length_step2)
 # cbind(step2_impute$practice_score_step2, step2_complete$practice_score_step2)
 mod_impute_step2_scores <- lm(score_step2 ~ uworld_clean + amboss_clean + length_step2 + simulate_full_practice + practice_score_step2 + number_of_practice_tests + school_factor, data = step2_impute) 
-summary(mod_impute_step2_scores)
-#sandwich(mod_impute_step2_scores)
+#summary(mod_impute_step2_scores)
 
+#calculating the p values using robust standard error:
 sqrt(diag(sandwich(mod_impute_step2_scores))) #this gives the sandwich variance now set to be the standard error
 p_interim <-pt(abs(mod_impute_step2_scores$coefficients)/sqrt(diag(sandwich(mod_impute_step2_scores))) , df = 114) 
 1 - p_interim #here are the p values with using the robust se
 
-
+#here this shows there's and issue with the new VIF because of colinearity
 vif(mod_impute_step2_scores)
+#mod_impute_step2_scores %>% tbl_regression() #this makes a cleaner looking summary table
+```
 
-mod_impute_step2_scores %>% tbl_regression() #this makes a cleaner looking summary table
+
+```{r lasso_model2}
+## Lasso
+
+set.seed(123123)
+my_design_mat <- model.matrix(score_step2~uworld_clean+amboss_clean+as.factor(length_step2)+as.factor(simulate_full_practice)+practice_score_step2+number_of_practice_tests+as.factor(school_factor),step2_impute)
+
+cv.glmnet(my_design_mat[,-1],step2_impute$score_step2,family = 'gaussian',standardize = T,type.measure = 'mse')
+
+model = glmnet(my_design_mat[,-1],step2_impute$score_step2,family = 'gaussian',standardize = T,lambda = 1.653 )
+
+coef(model)
+
+#now I need to make a model with a more limited set of predictors (this will stay the same since we set the seed)
+# as.factor(length_step2)1-2 weeks  
+# as.factor(length_step2)more than 8 weeks
+# practice_score_step2 
+
+#recode length step 2 to have 2 indicators
+step2_LASSO <- step2_impute %>% mutate(study1.2.weeks = case_when(length_step2 == "1-2 weeks" ~ 1, TRUE ~ 0), 
+                                       study8.plus.weeks = case_when(length_step2 == "more than 8 weeks" ~ 1, TRUE ~ 0))
+
+## here is where I would run a model with the selected predictors
 
 
-#library(glmnet)
+
+## then make a summary of that model's output and the new robust se and p values
+
+
 ```
 
 
@@ -618,7 +640,7 @@ table1(~ push_practice_test_step1 + push_uw_practice_score_step1 + push_nbme_pra
 
 Descriptive statistics will be reported in total and not by school (as requested by the collaborators).
 
-Looking at the data dictionary, we are given final_nbme_practice _score_step1 and final_uw_practice_s core_step1 which are two different covariates which are ONLY in Step 1. These specific questions were not included for step 2, instead there is a question for practice_score_step2, which I included in the model for step 2 score predictors above and will make a plot in this section.
+Looking at the data dictionary, we are given final_nbme_practice \_score_step1 and final_uw_practice_s core_step1 which are two different covariates which are ONLY in Step 1. These specific questions were not included for step 2, instead there is a question for practice_score_step2, which I included in the model for step 2 score predictors above and will make a plot in this section.
 
 Since everyone passed step 1, I did not run a regression model that included these covariates. Instead, I will make a frequency table.
 
@@ -669,6 +691,7 @@ ggplot(qudf, aes(amount)) + geom_histogram() +
 ```
 
 Length of study for each exam
+
 ```{r}
 # 2   length of study for step 1 and step 2 (barplot with frequency table)
        # for step 1
@@ -701,7 +724,8 @@ ggplot(data.frame(step2_complete), aes(x=length_step2)) +
      sum(is.na(step2_complete$length_step2))))
 ```
 
-Step 2 # of practice tests
+Step 2 \# of practice tests
+
 ```{r}
 # 3   # of practice tests (recoded from a text answer from "How many total practice tests did you take before Step 2?")
 ggplot(aes(x = number_of_practice_tests), data= step2_complete) + 
@@ -717,7 +741,8 @@ ggplot(aes(x = number_of_practice_tests), data= step2_complete) +
 
 ```
 
-Step 1 # of practice tests
+Step 1 \# of practice tests
+
 ```{r}
 # 4   number of practice tests histogram (among the people who answered the question) for step 1
 ggplot(aes(x = practicetest_step1), data= step1_complete) + 
@@ -736,6 +761,7 @@ ggplot(aes(x = practicetest_step1), data= step1_complete) +
 ```
 
 Simulating a full test day
+
 ```{r}
 # 5   full test day as factor from "Did you simulate a full Step 2 test day experience, e.g. 8 blocks of 40 UWorld questions or 2 of the 4-section practice tests?" "full_practice_test"
 ggplot(aes(x = full_practice_test), data= step2_complete) + 
@@ -753,6 +779,7 @@ ggplot(aes(x = full_practice_test), data= step2_complete) +
 ```
 
 Step 2 scores
+
 ```{r}
 # 6   histogram of Step 2 scores
 ggplot(step2_complete, aes(x = score_step2)) +
@@ -770,6 +797,7 @@ ggplot(step2_complete, aes(x = score_step2)) +
 ```
 
 Step 1 scores
+
 ```{r}
 # 7   frequency table of Step 1 scores
 kable(table(step1_complete$score_step1), caption = "Frequency of passing Step 1") # would be nice to have a way to summarize these in the same table, but this can just be remade with a table in Word
@@ -777,6 +805,7 @@ kable(table(is.na(step1_complete$score_step1)), caption = "True indicates missin
 ```
 
 Resources use
+
 ```{r}
 # 8   what resources are most widely used barplot 
 resources_2 <- step2_complete %>% select(I.uworld:I.other) %>% summarise(across(everything(), ~ sum(.)))
@@ -821,6 +850,7 @@ ggplot(step2_complete, aes(x = practice_score_step2)) +
 ```
 
 Summarizing comments for other_resources, other_step, changes_step
+
 ```{r}
 # 10   summarize comments for other_resources, other_step, changes_step
     ## summarize comments (other_resources, other_step, changes_step)
@@ -832,14 +862,18 @@ step1_complete$other_hascontents <- as.integer(nchar(step1_complete$other_resour
 mystring1 <- step1_complete %>% filter(other_hascontents == TRUE) %>% select(other_resources_step1, other_step1) 
 kable(mystring1, caption = "Other resources and if you'd used them again")
 ```
+
 What would you change?
+
 ```{r}
 step1_complete$change_hascontents <- as.integer(nchar(step1_complete$changes_step1) > 0) 
 #as.data.frame(step1_complete[which(step1_complete$change_hascontents == 1), "changes_step1" ])
 mystring2 <- step1_complete %>% filter(change_hascontents == TRUE) %>% select(changes_step1) %>% toString() 
 cat(str_wrap(mystring2), "\n") #used this package to help it print nicer https://stringr.tidyverse.org/reference/str_wrap.html
 ```
+
 Practice Scores for Step 1 and Step 2
+
 ```{r}
 # 11 Practice Scores for Step 1 and Step 2
 #   11a  final_nbme_practice_score_step1 is a percent from 0 to 100
@@ -859,13 +893,11 @@ ggplot(step1_complete, aes(x = final_uw_practice_score_step1)) +
   ggtitle("What was the 3 digit score you received on your final \n UWorld form before the Step 1 exam?", subtitle=paste(" answered = ", sum(!is.na(step1_complete$final_uw_practice_score_step1)), " missing = ", sum(is.na(step1_complete$final_uw_practice_score_step1))))
 
 ```
-
-::: 
+:::
 
 # Appendix/notes
-All the analyses are performed using the following:
--   R version 4.2.2 (2022-06-24); R Core Team (2022). R: A language and environment for statistical computing. R Foundation for Statistical Computing, Vienna, Austria. URL https://www.R-project.org/.
 
+All the analyses are performed using the following: - R version 4.2.2 (2022-06-24); R Core Team (2022). R: A language and environment for statistical computing. R Foundation for Statistical Computing, Vienna, Austria. URL https://www.R-project.org/.
 
 -   Harrell Jr FE (2022). rms: Regression Modeling Strategies. R package version 6.3-0, <https://CRAN.R-project.org/package=rms>.
 
@@ -874,7 +906,3 @@ The table below lists packages used in this document.
 ```{r}
 subset(data.frame(sessioninfo::package_info()), attached==TRUE, c(package, loadedversion))
 ```
-
-
-
-
