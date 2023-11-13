@@ -415,7 +415,7 @@ summary(exam_order_mod) %>% tbl_regression()  #model summary for reporting
 
 Based on the model output (p values), there doesn't appear to be any signifigant associations between exam order and the score for Step 2. Since the $R^2$ value is essentially 0, I conclude that there was no effect of exam order on step 2 scores.
 
-## Q2 What factors affect Step 2 score? (do not report this yet until we decide)
+## Q2 What factors affect Step 2 score? (report the final LASSO model)
 
 Again, we cannot analyze Step 1 scores since all respondents reported passing.
 
@@ -483,12 +483,27 @@ Multiple linear regression with:
 
 Careful to note that not all cases are complete - for example there are 399 responses in the complete step 2 dataset, of which for the number of practice tests taken, 108 are missing and 291 have a response recorded.
 
-Below I report the model results, sandwich variance, and VIF for step 2 scores model. After that, I show descriptive statistics for predictors and the outcome that was included in the model.
+Below I report the model results, sandwich variance, and VIF for 3 different versions of the step 2 scores model. The first is essentially a complete case analysis, then I run a model on imputed data, and then I run LASSO to select predictors on the imputed data and use the LASSO selected predictors to create the 3rd model. After that, I show descriptive statistics for predictors and the outcome that was included in the model.
+
+```{r}
+# for step 2
+ggplot(data.frame(step2_complete), aes(x=length_step2)) + 
+  geom_bar() + 
+  theme_minimal() + 
+  geom_text(aes(label = ..count..), stat = "count", vjust = 1.5, colour = "white") +
+  xlab("Time") +
+  ylab("Frequency") + 
+  ggtitle("How long did you study for Step 2 during a protected study period?", subtitle=
+    paste(" answered = ",
+     sum(!is.na(step2_complete$length_step2)), 
+     " missing = ", 
+     sum(is.na(step2_complete$length_step2))))
+```
+This plot shows that there is an issue with the number of participants who reported 1-2 weeks or more than 8 weeks so it would be advantageous to "borrow information" across levels by coding length of study as a continous variable, rather than as a categorical factor.
 
 ```{r}
 mod_step2_scores <- lm(score_step2 ~ uworld_clean + amboss_clean + length_step2 + simulate_full_practice + practice_score_step2 + number_of_practice_tests + school_factor, data = step2_complete) 
 summary(mod_step2_scores)
-
 
 sqrt(diag(sandwich(mod_step2_scores))) #this gives the sandwich variance now set to be the standard error
 p_interim <-pt(abs(mod_step2_scores$coefficients)/sqrt(diag(sandwich(mod_step2_scores))) , df = 72) 
@@ -519,13 +534,7 @@ step2_impute <-
     school_factor
   )
 
-# #imputing missing values (replace the NA in columns using the old fashioned matrix operation dt$columns[is.na]= vector of number)
-# step2_impute[which(is.na(step2_impute$uworld_clean) == TRUE), "uworld_clean"] <- sample(step2_impute$uworld_clean, size = sum(is.na(step2_impute$uworld_clean)))
-# step2_impute[which(is.na(step2_impute$amboss_clean) == TRUE), "amboss_clean"] <- sample(step2_impute$amboss_clean, size = sum(is.na(step2_impute$amboss_clean)))
-# step2_impute[which(is.na(step2_impute$length_step2) == TRUE), "length_step2"] <- sample(step2_impute$length_step2, size = sum(is.na(step2_impute$length_step2)))
-# step2_impute[which(is.na(step2_impute$practice_score_step2) == TRUE), "practice_score_step2"] <- sample(step2_impute$practice_score_step2, size = sum(is.na(step2_impute$practice_score_step2)))
-# step2_impute[which(is.na(step2_impute$number_of_practice_tests) == TRUE), "number_of_practice_tests"] <- sample(step2_impute$number_of_practice_tests, size = sum(is.na(step2_impute$number_of_practice_tests)))
-
+set.seed(123123) #so the results are reporoducible
 step2_impute = mice::mice(step2_impute,m=1,method='sample') %>% complete #better way to impute according to Jeffrey
 
 #this is the number of missingness
@@ -574,12 +583,39 @@ step2_LASSO <- step2_impute %>% mutate(study1.2.weeks = case_when(length_step2 =
                                        study8.plus.weeks = case_when(length_step2 == "more than 8 weeks" ~ 1, TRUE ~ 0))
 
 ## here is where I would run a model with the selected predictors
-mod_LASSO_step2_scores <- lm(score_step2 ~ uworld_clean + amboss_clean + study1.2.weeks + study5.6.weeks + study7.8.weeks + study8.plus.weeks + simulate_full_practice + practice_score_step2 + number_of_practice_tests + school_factor, data = step2_LASSO) 
+mod_LASSO_step2_scores <- lm(score_step2 ~ uworld_clean + amboss_clean + study1.2.weeks + study5.6.weeks + study7.8.weeks + study8.plus.weeks + simulate_full_practice + practice_score_step2 + number_of_practice_tests + school_factor, data = step2_LASSO) #careful, now the reference group absorbed in the intercept contains both people who have studied for less than 1 week AND people who have studied for 3-4 weeks
 
 ## then make a summary of that model's output and the new robust se and p values
 summary(mod_LASSO_step2_scores)
+vif(mod_LASSO_step2_scores)
+
+#here are the p values
+sqrt(diag(sandwich(mod_LASSO_step2_scores))) #this gives the sandwich variance now set to be the standard error
+p_interim <-pt(abs(mod_LASSO_step2_scores$coefficients)/sqrt(diag(sandwich(mod_LASSO_step2_scores))) , df = 72) 
+1 - p_interim #here are the p values with using the robust se
+```
+Exporting the data to post on Sharepoint (careful, right now this will load them on github if you uncomment these lines). Nick can use these to make the data dictionary.
+```{r}
+# write.csv(step2_impute, file = "step2_impute_export.csv")
+# write.csv(step2_complete , file = "step2_complete_export.csv")
+# write.csv(step1_complete, file = "step1_complete_export.csv")
+# write.csv(step2_LASSO , file = "step1_LASSO_export.csv")
+```
+
+## Q2 what we want to report after all
+```{r}
+mod2_cont <-  lm(score_step2 ~ uworld_clean + amboss_clean + as.numeric(length_step2) + simulate_full_practice + practice_score_step2 + number_of_practice_tests + school_factor, data = step2_impute) 
+
+summary(mod2_cont)
+vif(mod2_cont)
+
+sqrt(diag(sandwich(mod2_cont))) #this gives the sandwich variance now set to be the standard error
+p_interim <-pt(abs(mod2_cont$coefficients)/sqrt(diag(sandwich(mod2_cont))) , df = 72) 
+1 - p_interim #here are the p values with using the robust se
 
 ```
+
+
 
 
 ## Q3 What is associated (in this data) with pushing back a Step 1 exam date? (ready to report)
