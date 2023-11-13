@@ -553,34 +553,31 @@ vif(mod_impute_step2_scores)
 #mod_impute_step2_scores %>% tbl_regression() #this makes a cleaner looking summary table
 ```
 
-
+Here is where I run the LASSO and the final model we want to report on for Q2:
 ```{r lasso_model2}
 ## Lasso
 
 set.seed(123123)
 my_design_mat <- model.matrix(score_step2~uworld_clean+amboss_clean+as.factor(length_step2)+as.factor(simulate_full_practice)+practice_score_step2+number_of_practice_tests+as.factor(school_factor),step2_impute)
 
-cv.glmnet(my_design_mat[,-1],step2_impute$score_step2,family = 'gaussian',standardize = T,type.measure = 'mse')
+cv.glmnet(my_design_mat[,-1],step2_impute$score_step2,family = 'gaussian',standardize = T,type.measure = 'mse', lambda = seq(1e-2,1e+1,len=1e+4)) #  based on this output, we can build the model based on 0.262
 
-model = glmnet(my_design_mat[,-1],step2_impute$score_step2,family = 'gaussian',standardize = T,lambda = 1.653 )
+model = glmnet(my_design_mat[,-1],step2_impute$score_step2,family = 'gaussian',standardize = T,lambda = 0.262)
 
 coef(model)
 
 #now I need to make a model with a more limited set of predictors (this will stay the same since we set the seed)
-# as.factor(length_step2)1-2 weeks  
-# as.factor(length_step2)more than 8 weeks
-# practice_score_step2 
-
-#recode length step 2 to have 2 indicators
+#recode length step 2 to have indicators
 step2_LASSO <- step2_impute %>% mutate(study1.2.weeks = case_when(length_step2 == "1-2 weeks" ~ 1, TRUE ~ 0), 
+                                       study5.6.weeks = case_when(length_step2 == "5-6 weeks" ~ 1, TRUE ~ 0), 
+                                       study7.8.weeks = case_when(length_step2 == "7-8 weeks" ~ 1, TRUE ~ 0), 
                                        study8.plus.weeks = case_when(length_step2 == "more than 8 weeks" ~ 1, TRUE ~ 0))
 
 ## here is where I would run a model with the selected predictors
-
-
+mod_LASSO_step2_scores <- lm(score_step2 ~ uworld_clean + amboss_clean + study1.2.weeks + study5.6.weeks + study7.8.weeks + study8.plus.weeks + simulate_full_practice + practice_score_step2 + number_of_practice_tests + school_factor, data = step2_LASSO) 
 
 ## then make a summary of that model's output and the new robust se and p values
-
+summary(mod_LASSO_step2_scores)
 
 ```
 
