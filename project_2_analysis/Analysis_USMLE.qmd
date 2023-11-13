@@ -499,6 +499,9 @@ ggplot(data.frame(step2_complete), aes(x=length_step2)) +
      " missing = ", 
      sum(is.na(step2_complete$length_step2))))
 ```
+
+### DO NOT USE THIS PART, THIS WAS A PART OF OUR ANALYSIS THOUGTHS BUT NOT WHAT WE ENDED UP GOING WITH DUE TO DATA AVAILABILITY
+
 This plot shows that there is an issue with the number of participants who reported 1-2 weeks or more than 8 weeks so it would be advantageous to "borrow information" across levels by coding length of study as a continous variable, rather than as a categorical factor.
 
 ```{r}
@@ -510,14 +513,10 @@ p_interim <-pt(abs(mod_step2_scores$coefficients)/sqrt(diag(sandwich(mod_step2_s
 1 - p_interim #here are the p values with using the robust se
 
 vif(mod_step2_scores)
-
 mod_step2_scores %>% tbl_regression() #this makes a cleaner looking summary table
 ```
 
-now the significant coefficients are more numerous in the complete case analysis above
-
 Now showing the same the model with imputed missing values.
-
 ```{r mod2_with_imputation}
 ## model variables were uworld_clean + amboss_clean + length_step2 + simulate_full_practice + practice_score_step2 + number_of_practice_tests + school_factor
 # with missingness in uworld_clean, amboss_clean, length_step2, practice_score_step2, and number_of_practice_tests
@@ -541,8 +540,7 @@ step2_impute = mice::mice(step2_impute,m=1,method='sample') %>% complete #better
 kable(colSums(is.na(step2_complete[,c("uworld_clean", "amboss_clean", "length_step2", "simulate_full_practice", "practice_score_step2", "number_of_practice_tests", "school_factor")])), caption = "Missingness before imputation")
 ```
 
-Missingness after imputation to confirm the random sampling replacement worked
-
+Missingness after imputation:
 ```{r outdated_model2_with_imputation}
 colSums(is.na(step2_impute)) #missingness after imputation - should all be 0's
       
@@ -562,10 +560,9 @@ vif(mod_impute_step2_scores)
 #mod_impute_step2_scores %>% tbl_regression() #this makes a cleaner looking summary table
 ```
 
-Here is where I run the LASSO and the final model we want to report on for Q2:
+Here is where I run the LASSO (WHICH WE ARE NOT INCLUDING IN THE FINAL REPORT):
 ```{r lasso_model2}
-## Lasso
-
+## Lasso which we are not using anymore
 set.seed(123123)
 my_design_mat <- model.matrix(score_step2~uworld_clean+amboss_clean+as.factor(length_step2)+as.factor(simulate_full_practice)+practice_score_step2+number_of_practice_tests+as.factor(school_factor),step2_impute)
 
@@ -594,17 +591,21 @@ sqrt(diag(sandwich(mod_LASSO_step2_scores))) #this gives the sandwich variance n
 p_interim <-pt(abs(mod_LASSO_step2_scores$coefficients)/sqrt(diag(sandwich(mod_LASSO_step2_scores))) , df = 72) 
 1 - p_interim #here are the p values with using the robust se
 ```
-Exporting the data to post on Sharepoint (careful, right now this will load them on github if you uncomment these lines). Nick can use these to make the data dictionary.
-```{r}
-# write.csv(step2_impute, file = "step2_impute_export.csv")
-# write.csv(step2_complete , file = "step2_complete_export.csv")
-# write.csv(step1_complete, file = "step1_complete_export.csv")
-# write.csv(step2_LASSO , file = "step1_LASSO_export.csv")
-```
 
-## Q2 what we want to report after all
+
+## Q2 Report these for the model for step 2 scores
+
+This is using the imputed values from the step 2 data
 ```{r}
-mod2_cont <-  lm(score_step2 ~ uworld_clean + amboss_clean + as.numeric(length_step2) + simulate_full_practice + practice_score_step2 + number_of_practice_tests + school_factor, data = step2_impute) 
+#modify step2_impute dataset to modify length step 2
+step2_impute <- step2_impute %>% mutate(numeric_length_step2 = case_when(length_step2 == "less than 1 week" ~ 0.5, 
+                                                                         length_step2 == "1-2 weeks" ~ 1.5, 
+                                                                         length_step2 == "3-4 weeks" ~ 3.5, 
+                                                                         length_step2 == "5-6 weeks" ~ 5.5, 
+                                                                         length_step2 == "7-8 weeks" ~ 7.5, 
+                                                                         length_step2 == "more than 8 weeks" ~ 8.5))
+
+mod2_cont <-  lm(score_step2 ~ uworld_clean + amboss_clean + numeric_length_step2 + simulate_full_practice + practice_score_step2 + number_of_practice_tests + school_factor, data = step2_impute) 
 
 summary(mod2_cont)
 vif(mod2_cont)
@@ -615,8 +616,13 @@ p_interim <-pt(abs(mod2_cont$coefficients)/sqrt(diag(sandwich(mod2_cont))) , df 
 
 ```
 
-
-
+Exporting the data to post on Sharepoint (careful, right now this will load them on github if you uncomment these lines). Nick can use these to make the data dictionary.
+```{r}
+write.csv(step2_impute, file = "step2_impute_export.csv")
+write.csv(step2_complete , file = "step2_complete_export.csv")
+write.csv(step1_complete, file = "step1_complete_export.csv")
+write.csv(step2_LASSO , file = "step1_LASSO_export.csv")
+```
 
 ## Q3 What is associated (in this data) with pushing back a Step 1 exam date? (ready to report)
 
