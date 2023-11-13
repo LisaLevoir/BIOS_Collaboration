@@ -618,10 +618,10 @@ p_interim <-pt(abs(mod2_cont$coefficients)/sqrt(diag(sandwich(mod2_cont))) , df 
 
 Exporting the data to post on Sharepoint (careful, right now this will load them on github if you uncomment these lines). Nick can use these to make the data dictionary.
 ```{r}
-write.csv(step2_impute, file = "step2_impute_export.csv")
-write.csv(step2_complete , file = "step2_complete_export.csv")
-write.csv(step1_complete, file = "step1_complete_export.csv")
-write.csv(step2_LASSO , file = "step1_LASSO_export.csv")
+# write.csv(step2_impute, file = "step2_impute_export.csv")
+# write.csv(step2_complete , file = "step2_complete_export.csv")
+# write.csv(step1_complete, file = "step1_complete_export.csv")
+# write.csv(step2_LASSO , file = "step1_LASSO_export.csv")
 ```
 
 ## Q3 What is associated (in this data) with pushing back a Step 1 exam date? (ready to report)
