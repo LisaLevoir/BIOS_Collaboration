@@ -408,6 +408,7 @@ table(step2_complete$which_exam_first)
 exam_order_mod <- lm(formula = score_step2 ~ which_exam_first + school_factor, data = step2_complete)
 sqrt(diag(sandwich(exam_order_mod))) #this gives the sandwich variance now set to be the standard error
 p_interim <-pt(abs(exam_order_mod$coefficients)/sqrt(diag(sandwich(exam_order_mod))) , df = 134) 
+options(scipen = 999)
 1 - p_interim #here are the p values with using the robust se
 
 summary(exam_order_mod) %>% tbl_regression()  #model summary for reporting
@@ -612,6 +613,7 @@ vif(mod2_cont)
 
 sqrt(diag(sandwich(mod2_cont))) #this gives the sandwich variance now set to be the standard error
 p_interim <-pt(abs(mod2_cont$coefficients)/sqrt(diag(sandwich(mod2_cont))) , df = 72) 
+options(scipen = 999) # makes the p values easier to read
 1 - p_interim #here are the p values with using the robust se
 
 ```
