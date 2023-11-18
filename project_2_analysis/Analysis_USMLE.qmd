@@ -1,6 +1,6 @@
 ---
 title: "USMLE Data Analysis"
-author: "Lisa Levoir"
+author: "Lisa, Jeffrey (q3)"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 format: 
   html:
@@ -53,6 +53,7 @@ library(GGally) #makes pairs plots
 library(sandwich) #for robust standard errors
 library(gtsummary) #makes the tables look nicer
 library(glmnet) #for running LASSO
+library(mice)
 
 #if you want to rerun this in your computer, change the directory to where you want to work on your machine locally (do not upload data to github!)
 setwd("/Users/lisalevoir/BIOS7351_Collab/data_project2") #this line I would need to run in the console
@@ -419,13 +420,14 @@ options(scipen = 999)
 Based on the model output (p values), there doesn't appear to be any signifigant associations between exam order and the score for Step 2. Since the $R^2$ value is essentially 0, I conclude that there was no effect of exam order on step 2 scores.
 
 ## Q2 background information for analysis thought process of "What factors affect Step 2 score?"
+
 Again, we cannot analyze Step 1 scores since all respondents reported passing.
 
 Based on our SAP, if there are any covariates with more than 30% of responses missing, we will drop that variable or populate it with 0, depending on context. For example, the percent of Amboss questions completed will be filled with 0 for people who didn't answer that they used Amboss since it seems safe to assume they didn't complete any of the Amboss questions. For people who did select that they used Amboss but didn't answer a percentage will be treated as missing
 
 If less than 30% are missing, I may consider performing bootstrap sampling of known values to replace missing values. After accounting for missingness, I will assess for co-linearity of the predictors (ie. correlation) using VIF. If there is high co-linearity, we will use LASSO to perform variable selection. If there is no evidence of concerning levels of colinearity, I will proceed with linear regression.
 
-What actually ended up happening is that I did imputation using the mice package to account for missing data, then tried running a model but it had too high of VIF values for the length of time studying since this was a factor variable and there were <5 observations for multiple categories. Due to this sparsity of data in some categoties, it was not as advisable to include this predictor as a categorical variable (see bar plot) so that's why we decided to change this variable to be continuous. Then there was no longer an issue with VIF values and therefore no need to run LASSO. While changing a predictor to be continous does impose an additional assumption about the linear relationship between amount of time studying, we felt it was a reasonable assumption to impose since it allows us to have one summary coefficient and allows us to "borrow information" across levels of the data.
+What actually ended up happening is that I did imputation using the mice package to account for missing data, then tried running a model but it had too high of VIF values for the length of time studying since this was a factor variable and there were \<5 observations for multiple categories. Due to this sparsity of data in some categoties, it was not as advisable to include this predictor as a categorical variable (see bar plot) so that's why we decided to change this variable to be continuous. Then there was no longer an issue with VIF values and therefore no need to run LASSO. While changing a predictor to be continous does impose an additional assumption about the linear relationship between amount of time studying, we felt it was a reasonable assumption to impose since it allows us to have one summary coefficient and allows us to "borrow information" across levels of the data.
 
 I will keep the previous code here to show thought process and you're welcome to uncomment/run it if you'd like to see the other models, but they are not what we're using in the final report for the reasons listed above.
 
@@ -504,9 +506,9 @@ ggplot(data.frame(step2_complete), aes(x=length_step2)) +
      sum(is.na(step2_complete$length_step2))))
 ```
 
-### DO NOT USE THIS PART, THIS WAS A PART OF OUR ANALYSIS THOUGTHS BUT NOT WHAT WE ENDED UP GOING WITH DUE TO DATA AVAILABILITY
-
 This plot shows that there is an issue with the number of participants who reported 1-2 weeks or more than 8 weeks so it would be advantageous to "borrow information" across levels by coding length of study as a continous variable, rather than as a categorical factor.
+
+### DO NOT USE THIS PART, THIS WAS A PART OF OUR ANALYSIS THOUGTHS BUT NOT WHAT WE ENDED UP GOING WITH DUE TO DATA AVAILABILITY
 
 ```{r}
 mod_step2_scores <- lm(score_step2 ~ uworld_clean + amboss_clean + length_step2 + simulate_full_practice + practice_score_step2 + number_of_practice_tests + school_factor, data = step2_complete) 
@@ -604,7 +606,7 @@ mod_LASSO_step2_scores <- lm(score_step2 ~ uworld_clean + amboss_clean + study1.
 This is using the imputed values from the step 2 data
 
 ```{r}
-#modify step2_impute dataset to modify length step 2
+#modify step2_impute dataset to modify length step 2 to be middle ranges of the values * note I am using the step2_impute dataset which is from the mice package
 step2_impute <- step2_impute %>% mutate(numeric_length_step2 = case_when(length_step2 == "less than 1 week" ~ 0.5, 
                                                                          length_step2 == "1-2 weeks" ~ 1.5, 
                                                                          length_step2 == "3-4 weeks" ~ 3.5, 
@@ -638,7 +640,40 @@ Here, I will perform logistic regression with
 
 Y = yes or no (1 = yes, 2 = no for "push_step1")
 
-There may not be sufficient data on this since only 20 people responded that they decided to push back Step 1. The factors that were measured are:
+There may not be sufficient data on this since only 20 people responded that they decided to push back Step 1. 
+
+```{r}
+dt_q3 = step1_complete %>% 
+  mutate(amboss_clean = if_else(I.amboss>0,amboss_percent_step1,0),
+         uworld_clean = if_else(I.uworld>0,uworld_percent_step1,0),
+         numeric_length_step1 = 2*(length_step1-1)-0.5,
+         push_step1 = push_step1-1) %>% 
+  left_join(step2_complete %>% select(record_id,schoolid, simulate_full_practice,practice_score_step2)) %>% filter(!is.na(push_step1))
+
+
+dt_q3_impute = mice(dt_q3,m = 1,method = 'sample') %>% complete()
+
+model = glm(
+  push_step1~ uworld_clean + amboss_clean + numeric_length_step1 + simulate_full_practice + practicetest_step1 + schoolid,
+  dt_q3_impute,
+  family = 'binomial'
+)
+
+model_tb = broom::tidy(model)
+
+model_tb$se = sqrt(diag(sandwich(model)))
+model_tb$p.value = pnorm(-abs(model$coefficients/model_tb$se))
+
+model_tb$odd_ratio = exp(model$coefficients)
+
+model_tb
+```
+
+
+
+
+Previously, I had run an analysis with other factors I thought were relevant but this was not actually what was requested (oops!).
+The factors were:
 
 -   push remember step1 (1 = I only remember the form name, 2 = I only remember the score, 3 = I remember the form name and the score, 4 = I don't remember either) - we decided not to include this variable (can change later if desired)
 
