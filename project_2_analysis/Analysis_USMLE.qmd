@@ -459,6 +459,7 @@ step2_complete[, "number_of_practice_tests"] <- as.numeric(step2_complete$practi
 step2_complete$full_practice_test <- factor(step2_complete$full_test_practice_step2 , levels = c(1:4), labels = c("Yes and I'm glad I did", "Yes and it was unnecessary", "No and I wish I did", "No and I'm glad I did not"))
 step2_complete$simulate_full_practice <- ifelse(step2_complete$full_test_practice_step2 <= 2, 1, 0)
 step2_complete$simulate_full_practice <- factor(step2_complete$simulate_full_practice, levels = c(0, 1), labels = c("No", "Yes"))
+
 step2_complete$length_step2 <- factor(step2_complete$length_step2 , levels = c(1:6), labels = c("less than 1 week", "1-2 weeks", "3-4 weeks", "5-6 weeks", "7-8 weeks", "more than 8 weeks"))
 
 
@@ -636,47 +637,53 @@ Exporting the data to post on Sharepoint (careful, right now this will load them
 
 ## Q3 What is associated (in this data) with pushing back a Step 1 exam date?
 
-Here, I will perform logistic regression with
+Here, we perform logistic regression with
 
 Y = yes or no (1 = yes, 2 = no for "push_step1")
 
 There may not be sufficient data on this since only 20 people responded that they decided to push back Step 1. 
 
 ```{r}
+#| warning: false
+#| message: false
+
+
+step1_complete$full_practice_test <- factor(step1_complete$full_test_practice_step1 , levels = c(1:4), labels = c("Yes and I'm glad I did", "Yes and it was unnecessary", "No and I wish I did", "No and I'm glad I did not"))
+step1_complete$simulate_full_practice_1 <- ifelse(step1_complete$full_test_practice_step1 <= 2, 1, 0)
+step1_complete$simulate_full_practice_1 <- factor(step1_complete$simulate_full_practice_1, levels = c(0, 1), labels = c("No", "Yes"))
+
 dt_q3 = step1_complete %>% 
   mutate(amboss_clean = if_else(I.amboss>0,amboss_percent_step1,0),
          uworld_clean = if_else(I.uworld>0,uworld_percent_step1,0),
          numeric_length_step1 = 2*(length_step1-1)-0.5,
          push_step1 = push_step1-1) %>% 
-  left_join(step2_complete %>% select(record_id,schoolid, simulate_full_practice,practice_score_step2)) %>% filter(!is.na(push_step1))
+  left_join(step2_complete %>% select(record_id,schoolid, practice_score_step2)) %>% filter(!is.na(push_step1))
 
-
-dt_q3_impute = mice(dt_q3,m = 1,method = 'sample') %>% complete()
+set.seed(123123) #so the results are reporoducible
+dt_q3_impute = mice(dt_q3, m = 1, method = 'sample') %>% complete()
 
 model = glm(
-  push_step1~ uworld_clean + amboss_clean + numeric_length_step1 + simulate_full_practice + practicetest_step1 + schoolid,
+  push_step1~ uworld_clean + amboss_clean + numeric_length_step1 + simulate_full_practice_1 + practicetest_step1 + schoolid,
   dt_q3_impute,
   family = 'binomial'
-)
+) #logistic regression
 
 with(summary(model), 1 - deviance/null.deviance) # to calculate R^2
 
-model_tb = broom::tidy(model)
+model_tb = broom::tidy(model) #make a nice display
 
 model_tb$se = sqrt(diag(sandwich(model)))
 model_tb$p.value = pnorm(-abs(model$coefficients/model_tb$se))
 
 model_tb$odd_ratio = exp(model$coefficients)
 
-model_tb
-
-
-
+model_tb #print the output table
 ```
+The model output above merits discussion in the final report.
 
 
 
-
+### old notes for Q3 analysis
 Previously, I had run an analysis with other factors I thought were relevant but this was not actually what was requested (oops!).
 The factors were:
 
@@ -684,7 +691,7 @@ The factors were:
 
 -   push score only step 1 (1 = NBME, 2 = Uworld)
 
--   push practice test step 1 ( 1 - 8 listing various exams)
+-   push practice test step 1 (1 - 8 listing various exams)
 
 -   push nbme practice score (from 0 to 100%)
 
@@ -871,7 +878,7 @@ Full day practice test for Step 1 (as added by Megan)
 
 ```{r}
 # 5b   full test day as factor from "Did you simulate a full Step 1 test day experience, e.g. 8 blocks of 40 UWorld questions or 2 of the 4-section practice tests?" "full_practice_test"
-ggplot(aes(x = simulate_full_practice), data= dt_q3) +
+ggplot(aes(x = simulate_full_practice_1), data= dt_q3) +
   coord_flip() +
   scale_color_brewer(palette = "Greens") +
   geom_bar() +
