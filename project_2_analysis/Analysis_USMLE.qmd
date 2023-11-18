@@ -389,7 +389,7 @@ plot_grid(title_gg, gridded, nrow = 2, rel_heights = c(0.1, 0.9))
 Note, we plan to use the robust/sandwich variance estimator for regression models. One inclusion criteria is that the outcome variable ("Y") must be available for a subject to be included in the analysis question (ie. if they did not report a step 2 score, we won't perform relevant step 2 analysis on them).
 
 ::: panel-tabset
-## Q1 Does order have an impact on Step 2 scores? (ready to report)
+## Q1 Does order have an impact on Step 2 scores?
 
 We cannot analyze Step 1 since all survey responses reported passing For Step 2 scores, I will perform a linear regression with:
 
@@ -634,7 +634,7 @@ Exporting the data to post on Sharepoint (careful, right now this will load them
 # write.csv(step2_LASSO , file = "step1_LASSO_export.csv")
 ```
 
-## Q3 What is associated (in this data) with pushing back a Step 1 exam date? (ready to report)
+## Q3 What is associated (in this data) with pushing back a Step 1 exam date?
 
 Here, I will perform logistic regression with
 
@@ -659,6 +659,8 @@ model = glm(
   family = 'binomial'
 )
 
+with(summary(model), 1 - deviance/null.deviance) # to calculate R^2
+
 model_tb = broom::tidy(model)
 
 model_tb$se = sqrt(diag(sandwich(model)))
@@ -667,6 +669,9 @@ model_tb$p.value = pnorm(-abs(model$coefficients/model_tb$se))
 model_tb$odd_ratio = exp(model$coefficients)
 
 model_tb
+
+
+
 ```
 
 
@@ -718,7 +723,7 @@ caption <- "Description of indiviuals that pushed back Step 1"
 table1(~ push_practice_test_step1 + push_uw_practice_score_step1 + push_nbme_practice_score_step1 |push_step1_label, data=step1_complete, topclass="Rtable1-zebra")
 ```
 
-## Descriptive Statistics (ready to report)
+## Descriptive Statistics
 
 Descriptive statistics will be reported in total and not by school (as requested by the collaborators).
 
@@ -734,7 +739,8 @@ Since everyone passed step 1, I did not run a regression model that included the
 # 2   length of study for step 1 and step 2 (barplot with frequency table)
 # 3   # of practice tests (recoded from a text answer from "How many total practice tests did you take before Step 2?")
 # 4   number of practice tests histogram (among the people who answered the question) for step 1
-# 5   full test day as factor from "Did you simulate a full Step 2 test day experience, e.g. 8 blocks of 40 UWorld questions or 2 of the 4-section practice tests?" "full_practice_test"
+# 5a   full test day as factor from "Did you simulate a full Step 2 test day experience, e.g. 8 blocks of 40 UWorld questions or 2 of the 4-section practice tests?" "full_practice_test"
+# 5b  full day practice test step 1
 # 6   histogram of Step 2 scores
 # 7   frequency table of Step 1 scores
 # 8   what resources are most widely used barplot
@@ -842,10 +848,10 @@ ggplot(aes(x = practicetest_step1), data= step1_complete) +
 ## number of practice tests histogram (among the people who answered the question)
 ```
 
-Simulating a full test day
+Simulating a full test day for Step 2
 
 ```{r}
-# 5   full test day as factor from "Did you simulate a full Step 2 test day experience, e.g. 8 blocks of 40 UWorld questions or 2 of the 4-section practice tests?" "full_practice_test"
+# 5a   full test day as factor from "Did you simulate a full Step 2 test day experience, e.g. 8 blocks of 40 UWorld questions or 2 of the 4-section practice tests?" "full_practice_test"
 ggplot(aes(x = full_practice_test), data= step2_complete) + 
   coord_flip() +
   scale_color_brewer(palette = "Greens") + 
@@ -859,6 +865,26 @@ ggplot(aes(x = full_practice_test), data= step2_complete) +
          " missing = ", 
          sum(is.na(step2_complete$full_practice_test))))
 ```
+
+
+Full day practice test for Step 1 (as added by Megan)
+
+```{r}
+# 5b   full test day as factor from "Did you simulate a full Step 1 test day experience, e.g. 8 blocks of 40 UWorld questions or 2 of the 4-section practice tests?" "full_practice_test"
+ggplot(aes(x = simulate_full_practice), data= dt_q3) +
+  coord_flip() +
+  scale_color_brewer(palette = "Greens") +
+  geom_bar() +
+  theme_minimal() +
+  xlab("") +
+  ylab("Frequency") +
+    ggtitle("Did you simulate a full Step 1 test day experience, e.g. 8 blocks \n of 40 UWorld questions or 2 of the 4-section practice tests?", subtitle=
+        paste(" answered = ",
+         sum(!is.na(dt_q3$full_practice_test)),
+         " missing = ",
+         sum(is.na(dt_q3$full_practice_test))))
+```
+
 
 Step 2 scores
 
@@ -975,6 +1001,9 @@ ggplot(step1_complete, aes(x = final_uw_practice_score_step1)) +
   ggtitle("What was the 3 digit score you received on your final \n UWorld form before the Step 1 exam?", subtitle=paste(" answered = ", sum(!is.na(step1_complete$final_uw_practice_score_step1)), " missing = ", sum(is.na(step1_complete$final_uw_practice_score_step1))))
 
 ```
+
+
+
 :::
 
 # Appendix/notes
