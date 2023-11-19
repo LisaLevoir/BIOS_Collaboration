@@ -647,28 +647,34 @@ There may not be sufficient data on this since only 20 people responded that the
 #| warning: false
 #| message: false
 
-
+#reformatting the practice test variable
 step1_complete$full_practice_test <- factor(step1_complete$full_test_practice_step1 , levels = c(1:4), labels = c("Yes and I'm glad I did", "Yes and it was unnecessary", "No and I wish I did", "No and I'm glad I did not"))
 step1_complete$simulate_full_practice_1 <- ifelse(step1_complete$full_test_practice_step1 <= 2, 1, 0)
 step1_complete$simulate_full_practice_1 <- factor(step1_complete$simulate_full_practice_1, levels = c(0, 1), labels = c("No", "Yes"))
 
+
+#reformatting the data so it can go in the regression model
 dt_q3 = step1_complete %>% 
   mutate(amboss_clean = if_else(I.amboss>0,amboss_percent_step1,0),
          uworld_clean = if_else(I.uworld>0,uworld_percent_step1,0),
-         numeric_length_step1 = 2*(length_step1-1)-0.5,
+         numeric_length_step1 =  case_when(length_step1 == 1 ~ 0.5, 
+                                           length_step1 == 2 ~ 1.5, 
+                                           length_step1 == 3 ~ 3.5, 
+                                           length_step1 == 4 ~ 5.5, 
+                                           length_step1 == 5 ~ 7.5, 
+                                           length_step1 == 6 ~ 8.5),
          push_step1 = push_step1-1) %>% 
   left_join(step2_complete %>% select(record_id,schoolid, practice_score_step2)) %>% filter(!is.na(push_step1))
 
-set.seed(123123) #so the results are reporoducible
-dt_q3_impute = mice(dt_q3, m = 1, method = 'sample') %>% complete()
+set.seed(123123) #so the results are reproducible
+dt_q3_impute = mice(dt_q3, m = 1, method = 'sample') %>% complete() #running imputation to replace missing values
 
+#run the logistic regression
 model = glm(
   push_step1~ uworld_clean + amboss_clean + numeric_length_step1 + simulate_full_practice_1 + practicetest_step1 + schoolid,
   dt_q3_impute,
   family = 'binomial'
 ) #logistic regression
-
-with(summary(model), 1 - deviance/null.deviance) # to calculate R^2
 
 model_tb = broom::tidy(model) #make a nice display
 
