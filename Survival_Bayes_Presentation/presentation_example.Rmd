@@ -1,0 +1,17 @@
+
+
+
+```{r}
+# first attempt at installing the package
+# install.packages("rstanarm", repos = c("https://mc-stan.org/r-packages/", getOption("repos"))) #this line will not automatically get you stan_surv due to a github/CRAN loophole
+
+
+# this guide explains why this link will also include the surv_stan function https://github.com/stan-dev/rstanarm/issues/500
+devtools::install_github("stan-dev/rstanarm",ref = "feature/survival", build_vignettes = FALSE) # it takes a few minutes to run
+
+# then I needed to restart R because I got this error "Error in fetch(key) : 
+  ## lazy-load database '/Library/Frameworks/R.framework/Versions/4.2-arm64/Resources/library/rstanarm/help/rstanarm.rdb' is corrupt"
+
+# this is how to restart R in your console: .rs.restartR()
+```
+

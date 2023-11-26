@@ -683,6 +683,7 @@ model_tb$p.value = pnorm(-abs(model$coefficients/model_tb$se))
 
 model_tb$odd_ratio = exp(model$coefficients)
 
+with(summary(model), 1 - deviance/null.deviance) #gives the model R^2
 model_tb #print the output table
 ```
 The model output above merits discussion in the final report.
