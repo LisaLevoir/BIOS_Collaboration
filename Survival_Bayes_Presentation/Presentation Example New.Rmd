@@ -1,0 +1,238 @@
+---
+title: "BayesSurvival Vignette Example for Presentation"
+author: "Alexis Fleming"
+output:
+  html_document:
+    toc: true
+    df_print: paged
+  pdf_document: default
+---
+
+## Setup
+```{r setup, warning=FALSE, message=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning=FALSE, cache = TRUE)
+knitr::opts_knit$set(root.dir=file.path("/Users/alexisfleming/Survival/Final Presentation/Vignette Example"))
+
+# load libraries
+library(tidyverse)
+library(bayesplot)
+library(BayesSurvival)
+library(survival)
+library(survminer)
+library(simsurv)
+library(ggfortify)
+library(GGally)
+
+# set seed for reproducibility
+set.seed(7323)
+```
+
+
+## Example from README
+```{r README example}
+hazard.true <- function(t,x, betas, ...){1.2*(5*(t+0.05)^3 - 10*(t+0.05)^2 + 5*(t+0.05) ) + 0.7}
+sim.df <- data.frame(id = 1:1000)
+df <- simsurv(x = sim.df, maxt = 1, hazard = hazard.true)
+
+bs <- BayesSurv(df, "eventtime", "status")
+
+```
+
+
+## Example from Vignette with dependent Gamma prior
+Data load and Clean
+```{r clean data}
+# the cancer df is from the survival package
+# Survival in patients with advanced lung cancer from the North Central Cancer Treatment Group. Performance scores rate how well the patient can perform usual daily activities.
+
+cancer$status[cancer$status == 1] <- 0 #censored
+cancer$status[cancer$status == 2] <- 1 #died
+table(cancer$status)
+```
+
+Interesting note: The use of 1/2 for alive/dead instead of the usual 0/1 is a historical footnote. For data contained on punch cards, IBM 360 Fortran treated blank as a zero, which led to a policy within the section of Biostatistics to never use "0" as a data value since one could not distinguish it from a missing value. The policy became a habit, as is often the case; and the 1/2 coding endured long beyond the demise of punch cards and Fortran.
+
+
+Plot Survival Curves with the Cancer dataset
+```{r dep Gamma prior surv curves}
+# Example with dependent Gamma prior
+res_dep <- BayesSurv(df = cancer, #our data frame
+                     time = "time", #name of column with survival/censoring times
+                     event = "status", #name of column with status indicator
+                     prior = "Dependent") #use dependent Gamma prior
+
+# Plot the survival curve from the BayesSurv function
+km_plot_bayes_dep <- 
+  PlotBayesSurv(bayes.surv.object = res_dep,
+                object = "survival",
+                color = "olivedrab4",
+                legend=F,
+                ylab = "Survival", 
+                xlab="Time",
+                plot.title = "Bayesian Survival (Dep. Prior) & KM Curve")
+
+# the previous way that's been demonstrated in class to create a survival curve
+km_surv <- survfit(Surv(time=cancer$time , event=cancer$status) ~ 1,
+                   data=cancer,
+                   type="kaplan-meier")
+
+#dataframe of time and survival 
+df.km <- data.frame(t = km_surv$time, km = km_surv$surv)
+# Plot survival K-M curve
+km = ggsurv(km_surv, main = 'KM Survival Curve', 
+            back.white = TRUE, size.est = 1, size.ci = 1, 
+            surv.col = 'royalblue4')
+# autoplot(km_surv) +
+#  labs(x = "\n Survival Time (Days) ", y = "Survival Probabilities \n",
+#  title = "Survival Times Of \n Advanced Lung Cancer Patients \n") +
+#  theme(plot.title = element_text(hjust = 0.5),
+#  axis.title.x = element_text(face="bold", colour="#FF7A33", size = 12),
+#  axis.title.y = element_text(face="bold", colour="#FF7A33", size = 12),
+#  legend.title = element_text(face="bold", size = 10))
+
+#Add KM curve (+ CI) to Bayesian survival curve
+km_plot_bayes_dep <- 
+  km_plot_bayes_dep + 
+  geom_step(data = km$data, aes(x = time, y = surv), col = 'royalblue4', linewidth = 1) +
+  geom_line(data = km$data, aes(x = time, y = up), col = 'royalblue4', linewidth = 1, linetype = 81) +
+  geom_line(data = km$data, aes(x = time, y = low),col = 'royalblue4', linewidth = 1, linetype = 81)
+km_plot_bayes_dep 
+```
+
+Plot the Cumulative Hazard with the Cancer dataset
+```{r dep Gamma prior cumhaz curves}
+# Bayesian output of Cumulative Hazard curve
+cumhaz_plot_bayes_dep <- 
+  PlotBayesSurv(bayes.surv.object = res_dep,
+                object = "cumhaz",
+                color = "olivedrab4",
+                ylab = "Cumulative hazard",
+                xlab = "Time",
+                legend = F,
+                plot.title = 'Bayesian Cumulative Hazard Curve (Dep. Prior)')
+
+# Cumulative hazard non-Bayes
+ggsurvplot(km_surv,
+           fun="cumhaz", 
+           xlab="Days", 
+           ylab="Cumulative Hazard")
+
+# from lab 3:
+cumhaz_df <- list(time=km_surv$time, cumhaz = -log(km_surv$surv)) %>% as_tibble()
+cumhaz_curve <- 
+  ggplot(data = cumhaz_df, aes(x=time,y=cumhaz)) + 
+  geom_step(col = 'royalblue4', linewidth = 1)
+
+# Overlay of both plots
+overlay_cumhaz_plots <- 
+  cumhaz_plot_bayes_dep + 
+  geom_step(data = cumhaz_df, 
+            aes(x=time,y=cumhaz),
+            col = 'royalblue4', 
+            linewidth = 1)
+overlay_cumhaz_plots
+
+
+# Bayes Plot inst. hazard
+PlotBayesSurv(bayes.surv.object = res_dep,
+              object = "hazard",
+              plot.title = "Hazard")
+
+#Fit a Cox PH model
+model_fit_cph <- coxph(Surv(time=cancer$time , event=cancer$status) ~ 1,
+                     data=cancer)
+#Use basehaz() to produce estimates of the cumulative hazard
+# when instant_haz() is used below, basehaz() is called to get these cumulative hazards
+cumhaz<-survival::basehaz(model_fit_cph, center=FALSE)
+
+#load the supplemental function
+source("inst_haz.R")
+
+#use instant_haz(coxph.fit) to produce estimates of the baseline instantaneous hazard
+instanthaz <- instant_haz(model_fit_cph)
+
+# plot non-Bayes
+ggplot(data=instanthaz, aes(x=time,y=inst_haz))+
+  geom_smooth()
+
+# overlay both plots - this doesn't seem right?
+PlotBayesSurv(bayes.surv.object = res_dep,
+              object = "hazard",
+              plot.title = "Hazard") + 
+  geom_smooth(data=instanthaz, aes(x=time,y=inst_haz), se=F)
+
+
+```
+
+
+## Example from Vignette with independent Gamma prior
+Plot Survival Curves with the Cancer dataset
+```{r indep Gamma prior surv curves}
+# Example with independent Gamma prior
+res_indep <- BayesSurv(df = cancer, #our data frame
+          time = "time", #name of column with survival/censoring times
+          event = "status", #name of column with status indicator
+          prior = "Independent") #use independent Gamma prior
+
+# Plot the survival curve from the BayesSurv function using indep. Gamma prior
+km_plot_bayes_indep <- 
+  PlotBayesSurv(bayes.surv.object = res_indep,
+                object = "survival",
+                color = "olivedrab4",
+                legend=F,
+                ylab = "Survival", 
+                xlab="Time",
+                plot.title = "Bayesian Survival (Indep. Prior) & KM Curve")
+
+#Add KM curve (+ CI) to Bayesian survival curve
+km_plot_bayes_indep <- 
+  km_plot_bayes_indep + 
+  geom_step(data = km$data, aes(x = time, y = surv), col = 'royalblue4', linewidth = 1) +
+  geom_line(data = km$data, aes(x = time, y = up), col = 'royalblue4', linewidth = 1, linetype = 81) +
+  geom_line(data = km$data, aes(x = time, y = low),col = 'royalblue4', linewidth = 1, linetype = 81)
+km_plot_bayes_indep 
+```
+
+Plot the Cumulative Hazard with the Cancer dataset
+```{r indep Gamma prior cumhaz curves}
+
+# Bayesian output of Cumulative Hazard curve
+cumhaz_plot_bayes_indep <- 
+  PlotBayesSurv(bayes.surv.object = res_indep,
+                object = "cumhaz",
+                color = "olivedrab4",
+                ylab = "Cumulative hazard",
+                xlab = "Time",
+                legend = F,
+                plot.title = 'Bayesian Cumulative Hazard Curve (Indep. Prior)')
+
+# Cumulative hazard non-Bayes
+cumhaz_curve <-
+  ggsurvplot(km_surv,
+             fun="cumhaz", 
+             xlab="Days", 
+             ylab="Cumulative Hazard")
+
+# from lab 3:
+cumhaz_df <- list(time=km_surv$time, cumhaz = -log(km_surv$surv)) %>% as_tibble()
+cumhaz_curve <- 
+  ggplot(data = cumhaz_df, aes(x=time,y=cumhaz)) + 
+  geom_step(col = 'royalblue4', linewidth = 1)
+
+# Overlay of both plots
+overlay_cumhaz_plots <- 
+  cumhaz_plot_bayes_indep + 
+  geom_step(data = cumhaz_df, 
+            aes(x=time,y=cumhaz),
+            col = 'royalblue4', 
+            linewidth = 1)
+overlay_cumhaz_plots
+
+PlotBayesSurv(bayes.surv.object = res_indep,
+              object = "hazard",
+              plot.title = "Hazard")
+
+```
+
+
+

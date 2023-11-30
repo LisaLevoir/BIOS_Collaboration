@@ -1,0 +1,251 @@
+---
+title: "Replicated Lab 3"
+author: "Megan Hall"
+date: "2023-11-28"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, warning = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#Packages
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(magrittr) # to get %$% operator
+library(survival)
+library(KMsurv)
+library(BayesSurvival) #our package
+library(GGally) #for ggsurv fxn
+
+#Data Setup
+data(drug6mp)
+
+#create a Surv object using time=t2 and event=relapse
+surv6mp <- as_tibble(drug6mp) %>% arrange(t2) %$% Surv(time=t2, event=relapse)
+```
+
+
+##### Kaplan-Meier Surivival Curves
+
+Here are the Kaplan-Meier survival curves.
+
+```{r warning=FALSE}
+
+#KM Curve from Lab
+  #survfit object
+  lab_km_surv <- survfit(surv6mp~1, type="kaplan-meier")
+  #dataframe of time and survival 
+  lab_km <- data.frame(t = lab_km_surv$time, surv = lab_km_surv$surv)
+  #KM Curve
+  km = ggsurv(lab_km_surv, main = 'KM Survival Curve From Lab', 
+              back.white = TRUE, size.est = 1, size.ci = 1, 
+              surv.col = 'royalblue4')
+  
+#Bayesian - Dependent
+  #Bayesian Survival object
+  bayes_dep <- BayesSurv(drug6mp, "t2", "relapse", prior = 'Dependent')
+  
+  #Plot Bayesian survival curve
+  km_plot_bayes_dep <- PlotBayesSurv(bayes_dep, object = "survival",
+               color = 'olivedrab4', legend = FALSE, 
+               ylab = 'Survival', xlab = 'Time',
+               plot.title = 'Bayesian Survival (Dependent Prior) with KM Curve')
+  
+  #Add KM curve (+ CI) to Bayesian survival curve
+  km_plot_bayes_dep <- km_plot_bayes_dep + 
+                       geom_step(data = km$data,aes(x = time, y = surv), 
+                                 col = 'royalblue4', linewidth = 1) +
+                       geom_step(data = km$data, aes(x = time, y = up), 
+                                 col = 'royalblue4', linewidth = 1, 
+                                 linetype = 81) +
+                       geom_step(data = km$data, aes(x = time, y = low), 
+                                 col = 'royalblue4', linewidth = 1,
+                                 linetype = 81)
+  km_plot_bayes_dep 
+  
+#Bayesian - Independent
+  #Bayesian Survival object
+  bayes_indep <- BayesSurv(drug6mp, "t2", "relapse", prior = 'Independent')
+  
+  #Plot Bayesian survival curve
+  km_plot_bayes_indep <- PlotBayesSurv(bayes_indep, object = "survival",
+            color = 'plum', legend = FALSE, 
+            ylab = 'Survival', xlab = 'Time',
+            plot.title = 'Bayesian Survival (Independent Prior) with KM Curve')
+  
+  #Add KM curve (+ CI) to Bayesian survival curve
+  km_plot_bayes_indep <- km_plot_bayes_indep +
+                         geom_step(data = km$data, aes(x = time, y = surv),
+                                   col = 'royalblue4', linewidth = 1) +
+                         geom_step(data = km$data, aes(x = time, y = up), 
+                                   col = 'royalblue4', linewidth = 1, 
+                                   linetype = 81) +
+                         geom_step(data = km$data, aes(x = time, y = low), 
+                                   col = 'royalblue4', linewidth = 1,
+                                   linetype = 81)
+  km_plot_bayes_indep 
+
+```
+
+##### Fleming-Harrington Surivival Curves
+
+Here are the Fleming-Harrington survival curves.
+
+```{r warning=FALSE}
+
+#FH Curve from Lab
+  #survfit object
+  lab_fh_surv <- survfit(surv6mp~1, type="fleming-harrington")
+  #dataframe of time and survival 
+  lab_fh <- data.frame(t = lab_fh_surv$time, surv = lab_fh_surv$surv)
+  #FH Curve
+  fh = ggsurv(lab_fh_surv, main = 'FH Survival Curve From Lab',
+              back.white = TRUE, size.est = 1, size.ci = 1, 
+              surv.col = 'darkorchid4')
+  
+#Bayesian - Dependent
+  #Plot Bayesian survival curve
+  fh_plot_bayes_dep <- PlotBayesSurv(bayes_dep, object = "survival",
+        color = 'olivedrab4', legend = FALSE,
+        ylab = 'Survival', xlab = 'Time',
+        plot.title = 'Bayesian Survival Curve (Dependent Prior) with FH Curve')
+  
+  #Add FH curve (+ CI) to Bayesian survival curve
+  fh_plot_bayes_dep <- fh_plot_bayes_dep + geom_step(data = fh$data, 
+                                                     aes(x = time, y = surv), 
+                                                         col = 'darkorchid4', 
+                                                     linewidth = 1) +
+                                           geom_step(data = fh$data, 
+                                                     aes(x = time, y = up), 
+                                                     col = 'darkorchid4', 
+                                                     linewidth = 1,
+                                                     linetype = 81) +
+                                           geom_step(data = fh$data, 
+                                                     aes(x = time, y = low), 
+                                                     col = 'darkorchid4', 
+                                                     linewidth = 1,
+                                                     linetype = 81)
+  fh_plot_bayes_dep 
+  
+#Bayesian - Dependent
+  #Plot Bayesian survival curve
+  fh_plot_bayes_indep <- PlotBayesSurv(bayes_indep, object = "survival",
+      color = 'plum', legend = FALSE,
+      ylab = 'Survival', xlab = 'Time',
+      plot.title = 'Bayesian Survival Curve (Independent Prior) with FH Curve')
+  
+  #Add FH curve (+ CI) to Bayesian survival curve
+  fh_plot_bayes_indep <- fh_plot_bayes_indep + geom_step(data = fh$data, 
+                                                     aes(x = time, y = surv), 
+                                                         col = 'darkorchid4', 
+                                                     linewidth = 1) +
+                                           geom_step(data = fh$data, 
+                                                     aes(x = time, y = up), 
+                                                     col = 'darkorchid4', 
+                                                     linewidth = 1,
+                                                     linetype = 81) +
+                                           geom_step(data = fh$data, 
+                                                     aes(x = time, y = low), 
+                                                     col = 'darkorchid4', 
+                                                     linewidth = 1,
+                                                     linetype = 81)
+  fh_plot_bayes_indep 
+
+```
+
+
+##### Kaplan-Meier Cumulative Hazard Curves  
+
+Here are the Kaplan-Meier cumulative hazard curves.
+
+```{r warning=FALSE, outwidth = "50%"}
+
+#KM Cumulative Hazard Curve from Lab
+  #dataframe of time and cumulative hazard
+  lab_km_chaz <- data.frame(t = lab_km_surv$time, chaz = -log(lab_km_surv$surv))
+  #KM curve
+  km_chaz = ggplot() + geom_step(data = lab_km_chaz, 
+                                 aes(x = t, y = chaz), col = 'royalblue4', 
+                                 linewidth = 1)
+          
+  
+#Bayesian - Dependent
+  #Plot Bayesian cumulative hazard curve
+  km_plot_bayes_dep <- PlotBayesSurv(bayes_dep, object = "cumhaz",
+color = 'olivedrab4', legend = FALSE,
+ylab = 'Cumulative Hazard', xlab = 'Time',
+plot.title = 'Bayesian Cumulative Hazard Curve (Dependent Prior) with KM Curve')
+  
+  #Add KM curve (+ CI) to Bayesian cumulative hazard curve
+  km_plot_bayes_dep <- km_plot_bayes_dep + geom_step(data = lab_km_chaz, 
+                                                     aes(x = t, y = chaz), 
+                                                    col = 'royalblue4', 
+                                                    linewidth = 1)
+
+  km_plot_bayes_dep 
+  
+#Bayesian - Independent
+  #Plot Bayesian cumulative hazard curve
+  km_plot_bayes_indep <- PlotBayesSurv(bayes_indep, object = "cumhaz",
+ color = 'plum', legend = FALSE,
+ ylab = 'Cumulative Hazard', xlab = 'Time',
+ plot.title = 'Bayesian Cumulative Hazard Curve (Independent Prior) with KM Curve')
+  
+  #Add KM curve (+ CI) to Bayesian cumulative hazard curve
+  km_plot_bayes_indep <- km_plot_bayes_indep + geom_step(data = lab_km_chaz, 
+                                                     aes(x = t, y = chaz), 
+                                                     col = 'royalblue4', 
+                                                     linewidth = 1)
+
+  km_plot_bayes_indep 
+
+```
+
+##### Fleming-Harrington Cumulative Hazard Curves  
+
+Here are the Kaplan-Meier cumulative hazard curves.
+
+```{r warning=FALSE}
+
+#FH Cumulative Hazard Curve from Lab
+  lab_fh_chaz <- data.frame(t = lab_fh_surv$time, chaz = -log(lab_fh_surv$surv))
+  
+#FH Curve  
+  fh_chaz = ggplot() + geom_step(data = lab_fh_chaz, aes(x = t, y = chaz), 
+                                 col = 'royalblue4', linewidth = 1)
+          
+  
+#Bayesian - Dependent
+  #Plot Bayesian cumulative hazard curve
+  fh_plot_bayes_dep <- PlotBayesSurv(bayes_dep, object = "cumhaz",
+color = 'olivedrab4', legend = FALSE,
+ylab = 'Cumulative Hazard', xlab = 'Time',
+plot.title = 'Dependent Prior')
+  
+  #Add FH curve (+ CI) to Bayesian cumulative hazard curve
+  fh_plot_bayes_dep <- fh_plot_bayes_dep + geom_step(data = lab_fh_chaz, 
+                                                     aes(x = t, y = chaz), 
+                                                     col = 'darkorchid4', 
+                                                     linewidth = 1)
+
+  fh_plot_bayes_dep 
+  
+#Bayesian - Independent
+#Plot Bayesian cumulative hazard curve
+  fh_plot_bayes_indep <- PlotBayesSurv(bayes_indep, object = "cumhaz",
+color = 'plum', legend = FALSE,
+ylab = 'Cumulative Hazard', xlab = 'Time',
+plot.title = 'Independent Prior')
+  
+  #Add FH curve (+ CI) to Bayesian cumulative hazard curve
+  fh_plot_bayes_indep <- fh_plot_bayes_indep + geom_step(data = lab_fh_chaz, 
+                                                     aes(x = t, y = chaz), 
+                                                         col = 'darkorchid4', 
+                                                     linewidth = 1)
+
+  fh_plot_bayes_indep 
+
+```
